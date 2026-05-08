@@ -3,6 +3,7 @@ import { PlusCircle, Users, BarChart3 } from 'lucide-react';
 import LogWork from './components/LogWork';
 import Clients from './components/Clients';
 import MonthlyReport from './components/MonthlyReport';
+import ReloadPrompt from './components/ReloadPrompt';
 
 function App() {
   const [activeTab, setActiveTab] = useState('logwork');
@@ -22,6 +23,7 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 font-sans pb-16 md:pb-0">
+      <ReloadPrompt />
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-100 p-4 sticky top-0 z-10">
         <h1 className="text-xl font-semibold text-center text-brand-600">Control Horas</h1>

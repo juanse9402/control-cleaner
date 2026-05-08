@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="36" fill="#10b981"/>
+  <!-- Sparkles Icon -->
+  <path d="M96 24L105 75L156 84L105 93L96 144L87 93L36 84L87 75Z" fill="#ffffff"/>
+  <path d="M144 120L148 135L163 139L148 143L144 158L140 143L125 139L140 135Z" fill="#ffffff"/>
+</svg>
