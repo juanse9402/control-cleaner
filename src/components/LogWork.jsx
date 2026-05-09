@@ -12,16 +12,27 @@ export default function LogWork() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [todayServices, setTodayServices] = useState([]);
+  const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
     const fetchClients = async () => {
-      const { data, error } = await supabase
-        .from('clientes')
-        .select('id, nombre, tarifa_hora')
-        .order('nombre');
-      
-      if (data) setClients(data);
-      if (error) console.error('Error fetching clients:', error);
+      try {
+        const { data, error } = await supabase
+          .from('clientes')
+          .select('*')
+          .order('nombre');
+        
+        if (error) {
+          console.error('Error fetching clients:', error);
+          setFetchError(error.message);
+        } else if (data) {
+          setClients(data);
+          setFetchError(null);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching clients:', err);
+        setFetchError(err.message);
+      }
     };
 
     fetchClients();
@@ -113,6 +124,16 @@ export default function LogWork() {
         <div className="mb-4 bg-green-50 text-green-800 px-4 py-3 rounded-xl flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 text-green-600" />
           <span className="font-medium text-sm">¡Registro guardado exitosamente!</span>
+        </div>
+      )}
+
+      {fetchError && (
+        <div className="mb-4 bg-red-50 text-red-800 px-4 py-3 rounded-xl text-sm border border-red-200 animate-in fade-in">
+          <strong className="block mb-1">Error de conexión con Supabase:</strong>
+          {fetchError}
+          <p className="mt-2 text-xs opacity-80">
+            * Revisa que las políticas RLS (Row Level Security) en Supabase estén desactivadas o que permitan "Select".
+          </p>
         </div>
       )}
 
