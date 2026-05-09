@@ -46,8 +46,8 @@ export default function LogWork() {
       .select(`
         id,
         horas,
-        nota,
-        subtotal,
+        notas,
+        total_pago,
         cliente_id,
         clientes (
           nombre,
@@ -88,16 +88,17 @@ export default function LogWork() {
           cliente_id: selectedClient,
           fecha: date,
           horas: Number(hours),
-          nota: notes,
-          subtotal: subtotal
+          notas: notes,
+          total_pago: subtotal
         }
       ]);
 
     setIsSubmitting(false);
 
     if (error) {
-      console.error('Error saving service:', error);
-      alert('Error al guardar. Intenta de nuevo.');
+      console.error('Error de Supabase:', error);
+      alert('Error al guardar. Revisa la consola para más detalles.');
+      setFetchError('Error al guardar: ' + error.message);
     } else {
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
@@ -248,13 +249,13 @@ export default function LogWork() {
                         )}
                       </h4>
                       <p className={`text-sm mt-1 ${isPremium ? 'text-amber-700/80' : 'text-gray-500'}`}>
-                        {service.horas} horas • ${service.subtotal}
+                        {service.horas} horas • ${service.total_pago}
                       </p>
                     </div>
                   </div>
-                  {service.nota && (
+                  {service.notas && (
                     <p className={`text-xs mt-2 italic ${isPremium ? 'text-amber-600' : 'text-gray-400'}`}>
-                      "{service.nota}"
+                      "{service.notas}"
                     </p>
                   )}
                 </div>
