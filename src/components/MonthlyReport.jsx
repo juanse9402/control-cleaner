@@ -9,12 +9,52 @@ export default function MonthlyReport() {
   useEffect(() => {
     const fetchMonthlyData = async () => {
       setIsLoading(true);
+      
+      const date = new Date();
+      const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0];
+
       const { data, error } = await supabase
-        .from('reporte_mensual_clientes')
-        .select('*');
+        .from('servicios')
+        .select(`
+          horas,
+          total_pago,
+          cliente_id,
+          clientes (
+            nombre,
+            tarifa_hora
+          )
+        `)
+        .gte('fecha', firstDay)
+        .lte('fecha', lastDay);
       
       if (!error && data) {
-        setReportData(data);
+        const grouped = data.reduce((acc, curr) => {
+          const clientId = curr.cliente_id;
+          if (!acc[clientId]) {
+            acc[clientId] = {
+              nombre: curr.clientes?.nombre || 'Desconocido',
+              total_horas: 0,
+              total_monto: 0
+            };
+          }
+          
+          const horas = Number(curr.horas) || 0;
+          let pago = Number(curr.total_pago);
+          
+          if (!curr.total_pago || isNaN(pago)) {
+             const tarifa = Number(curr.clientes?.tarifa_hora) || 0;
+             pago = horas * tarifa;
+          }
+          
+          acc[clientId].total_horas += horas;
+          acc[clientId].total_monto += pago;
+          
+          return acc;
+        }, {});
+
+        const reportArray = Object.values(grouped).sort((a, b) => b.total_monto - a.total_monto);
+        setReportData(reportArray);
       } else {
         console.error('Error fetching monthly report:', error);
       }
@@ -64,13 +104,13 @@ export default function MonthlyReport() {
               {reportData.map((item, index) => (
                 <tr key={index} className="hover:bg-gray-50/50 transition-colors">
                   <td className="p-4 font-medium text-gray-900">
-                    {item.cliente_nombre || item.nombre_cliente || item.nombre || 'Desconocido'}
+                    {item.nombre}
                   </td>
                   <td className="p-4 text-gray-600">
                     {Number(item.total_horas).toFixed(1)}h
                   </td>
                   <td className="p-4 text-right font-semibold text-brand-600">
-                    ${Number(item.total_monto).toFixed(2)}
+                    ${Number(item.total_monto).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                 </tr>
               ))}
@@ -78,8 +118,8 @@ export default function MonthlyReport() {
             <tfoot className="bg-gray-900 text-white">
               <tr>
                 <td className="p-4 font-semibold rounded-bl-2xl">Total General</td>
-                <td className="p-4 font-medium">{grandTotalHoras.toFixed(1)}h</td>
-                <td className="p-4 text-right font-bold text-lg rounded-br-2xl">${grandTotalMonto.toFixed(2)}</td>
+                <td className="p-4 font-medium">{Number(grandTotalHoras).toFixed(1)}h</td>
+                <td className="p-4 text-right font-bold text-lg rounded-br-2xl">${Number(grandTotalMonto).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             </tfoot>
           </table>
