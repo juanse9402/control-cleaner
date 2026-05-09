@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { PlusCircle, Users, BarChart3 } from 'lucide-react';
+import { PlusCircle, Users, BarChart3, ClipboardList } from 'lucide-react';
 import LogWork from './components/LogWork';
 import Clients from './components/Clients';
 import MonthlyReport from './components/MonthlyReport';
+import History from './components/History';
 import ReloadPrompt from './components/ReloadPrompt';
 
 function App() {
@@ -14,6 +15,8 @@ function App() {
         return <LogWork />;
       case 'clients':
         return <Clients />;
+      case 'history':
+        return <History />;
       case 'reports':
         return <MonthlyReport />;
       default:
@@ -53,6 +56,15 @@ function App() {
         >
           <Users className="w-6 h-6 mb-1" />
           <span className="text-xs font-medium">Clientes</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
+            activeTab === 'history' ? 'text-brand-600 bg-brand-50' : 'text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <ClipboardList className="w-6 h-6 mb-1" />
+          <span className="text-xs font-medium">Historial</span>
         </button>
         <button
           onClick={() => setActiveTab('reports')}
