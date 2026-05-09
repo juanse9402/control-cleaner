@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CalendarDays, CheckCircle2, Clock } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Clock, Star } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 export default function LogWork() {
@@ -11,6 +11,7 @@ export default function LogWork() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [todayServices, setTodayServices] = useState([]);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -24,7 +25,30 @@ export default function LogWork() {
     };
 
     fetchClients();
+    fetchTodayServices();
   }, []);
+
+  const fetchTodayServices = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from('servicios')
+      .select(`
+        id,
+        horas,
+        nota,
+        subtotal,
+        cliente_id,
+        clientes (
+          nombre,
+          tarifa_hora
+        )
+      `)
+      .eq('fecha', today)
+      .order('id', { ascending: false });
+      
+    if (data) setTodayServices(data);
+    if (error) console.error('Error fetching today services:', error);
+  };
 
   const selectedClientData = clients.find(c => c.id === selectedClient);
   const calculatedTotal = selectedClientData && hours 
@@ -72,6 +96,9 @@ export default function LogWork() {
       setHours('');
       setNotes('');
       setDate(new Date().toISOString().split('T')[0]);
+      
+      // Update agenda
+      fetchTodayServices();
     }
   };
 
@@ -167,6 +194,54 @@ export default function LogWork() {
           )}
         </button>
       </form>
+
+      {/* Agenda de hoy */}
+      <div className="mt-8 border-t border-gray-100 pt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Agenda de hoy</h3>
+        {todayServices.length === 0 ? (
+          <p className="text-sm text-gray-500">No hay servicios registrados hoy.</p>
+        ) : (
+          <div className="space-y-3">
+            {todayServices.map(service => {
+              // Mark as premium if the client pays 14/hr (Esti, Laura S, Monica)
+              const isPremium = service.clientes?.tarifa_hora === 14;
+              
+              return (
+                <div 
+                  key={service.id} 
+                  className={`p-4 rounded-xl shadow-sm border transition-all ${
+                    isPremium 
+                      ? 'bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200' 
+                      : 'bg-white border-gray-100'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className={`font-semibold ${isPremium ? 'text-amber-900' : 'text-gray-900'} flex items-center gap-2`}>
+                        {service.clientes?.nombre || 'Cliente eliminado'}
+                        {isPremium && (
+                          <span className="bg-amber-100 text-amber-800 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                            Premium
+                          </span>
+                        )}
+                      </h4>
+                      <p className={`text-sm mt-1 ${isPremium ? 'text-amber-700/80' : 'text-gray-500'}`}>
+                        {service.horas} horas • ${service.subtotal}
+                      </p>
+                    </div>
+                  </div>
+                  {service.nota && (
+                    <p className={`text-xs mt-2 italic ${isPremium ? 'text-amber-600' : 'text-gray-400'}`}>
+                      "{service.nota}"
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
