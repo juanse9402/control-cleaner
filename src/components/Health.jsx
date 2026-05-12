@@ -149,9 +149,6 @@ const Health = () => {
       }
     });
 
-    let total = 0;
-    let inRegla = 0;
-
     allRecords.forEach(r => {
       const d = new Date(r.fecha);
       if (d.getFullYear() === year && (d.getMonth() + 1) === month) {
@@ -161,17 +158,25 @@ const Health = () => {
         }
         if (dailyMap[d.getDate()]) {
           dailyMap[d.getDate()][type] += 1;
-          total += 1;
-          if (dailyMap[d.getDate()].isRegla) {
-            inRegla += 1;
-          }
+        }
+      }
+    });
+
+    let diasDolor = 0;
+    let diasDolorEnRegla = 0;
+
+    Object.values(dailyMap).forEach(dayData => {
+      if (dayData.Naproxeno > 0 || dayData.Imigran > 0) {
+        diasDolor += 1;
+        if (dayData.isRegla) {
+          diasDolorEnRegla += 1;
         }
       }
     });
 
     return {
       dailyData: Object.values(dailyMap),
-      reglaStats: { total, inRegla }
+      reglaStats: { diasDolor, diasDolorEnRegla }
     };
   }, [selectedMonth, allRecords, allCycles]);
 
@@ -309,7 +314,7 @@ const Health = () => {
 
         <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mt-2">
           <p className="text-sm text-purple-800 font-medium leading-relaxed">
-            Este mes, el <strong className="text-pink-600 text-base">{reglaStats.total > 0 ? Math.round((reglaStats.inRegla / reglaStats.total) * 100) : 0}%</strong> de las crisis ocurrieron durante los días de regla.
+            Este mes tuviste <strong className="text-purple-900 text-base">{reglaStats.diasDolor}</strong> días de dolor. <strong className="text-pink-600 text-base">{reglaStats.diasDolorEnRegla}</strong> de esos días coincidieron con tu ciclo menstrual.
           </p>
         </div>
       </section>
