@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Pill, Syringe, TrendingDown, TrendingUp, AlertCircle, Clock, FileText, CalendarDays } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-
-const MigraineChart = lazy(() => import('./MigraineChart'));
+import MigraineChart from './MigraineChart';
 
 const Health = () => {
   const [loading, setLoading] = useState(false);
@@ -348,17 +347,17 @@ const Health = () => {
         </div>
         
         <div className="h-64 w-full mb-6">
-          <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-purple-400">Cargando gráfica...</div>}>
-            {dailyData && dailyData.length > 0 ? (
-              <MigraineChart 
-                dailyData={dailyData} 
-                refAreasRegla={refAreasRegla} 
-                refAreasPredicted={refAreasPredicted} 
-              />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center text-purple-300">Cargando datos...</div>
-            )}
-          </Suspense>
+          {dailyData && dailyData.length > 0 ? (
+            <MigraineChart
+              dailyData={dailyData}
+              refAreasRegla={refAreasRegla}
+              refAreasPredicted={refAreasPredicted}
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-purple-300 text-sm">
+              Cargando datos de salud...
+            </div>
+          )}
         </div>
 
         <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mt-2 flex flex-col gap-2">
