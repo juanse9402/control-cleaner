@@ -1,15 +1,20 @@
 import { useState } from 'react';
-import { PlusCircle, Users, BarChart3, ClipboardList } from 'lucide-react';
+import { PlusCircle, Users, BarChart3, ClipboardList, HeartPulse, Sparkles } from 'lucide-react';
 import LogWork from './components/LogWork';
 import Clients from './components/Clients';
 import MonthlyReport from './components/MonthlyReport';
 import History from './components/History';
+import Health from './components/Health';
 import ReloadPrompt from './components/ReloadPrompt';
 
 function App() {
+  const [appMode, setAppMode] = useState('limpieza'); // 'limpieza' | 'salud'
   const [activeTab, setActiveTab] = useState('logwork');
 
   const renderContent = () => {
+    if (appMode === 'salud') {
+      return <Health />;
+    }
     switch (activeTab) {
       case 'logwork':
         return <LogWork />;
@@ -25,11 +30,31 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 font-sans pb-16 md:pb-0">
+    <div className={`min-h-screen flex flex-col font-sans pb-16 md:pb-0 ${appMode === 'salud' ? 'bg-purple-50/30' : 'bg-gray-50'}`}>
       <ReloadPrompt />
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-100 p-4 sticky top-0 z-10">
-        <h1 className="text-xl font-semibold text-center text-brand-600">Control Horas</h1>
+      <header className="bg-white shadow-sm border-b border-gray-100 p-4 sticky top-0 z-10 flex flex-col gap-4">
+        <h1 className={`text-xl font-semibold text-center ${appMode === 'salud' ? 'text-purple-700' : 'text-brand-600'}`}>
+          {appMode === 'salud' ? 'Control de Salud' : 'Control Horas'}
+        </h1>
+        
+        {/* Main Menu Toggle */}
+        <div className="flex bg-gray-100 p-1 rounded-xl max-w-sm mx-auto w-full">
+          <button 
+            onClick={() => setAppMode('limpieza')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-lg transition-all ${appMode === 'limpieza' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <Sparkles className="w-4 h-4" />
+            Limpieza
+          </button>
+          <button 
+            onClick={() => setAppMode('salud')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-lg transition-all ${appMode === 'salud' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <HeartPulse className="w-4 h-4" />
+            Salud
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -38,7 +63,8 @@ function App() {
       </main>
 
       {/* Bottom Navigation (Mobile First) */}
-      <nav className="fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around p-2 md:relative md:max-w-lg md:mx-auto md:border md:rounded-t-2xl md:shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
+      {appMode === 'limpieza' && (
+        <nav className="fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around p-2 md:relative md:max-w-lg md:mx-auto md:border md:rounded-t-2xl md:shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
         <button
           onClick={() => setActiveTab('logwork')}
           className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
@@ -76,6 +102,7 @@ function App() {
           <span className="text-xs font-medium">Reportes</span>
         </button>
       </nav>
+      )}
     </div>
   );
 }
