@@ -4,7 +4,7 @@ import LogWork from './components/LogWork';
 import Clients from './components/Clients';
 import MonthlyReport from './components/MonthlyReport';
 import History from './components/History';
-import Health from './components/Health';
+import Health from './components/HealthView';
 import ReloadPrompt from './components/ReloadPrompt';
 
 function App() {
