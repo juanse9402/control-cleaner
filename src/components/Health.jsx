@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Pill, Syringe, TrendingDown, TrendingUp, AlertCircle, Clock } from 'lucide-react';
+import { Pill, Syringe, TrendingDown, TrendingUp, AlertCircle, Clock, FileText } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { supabase } from '../lib/supabase';
 
 const Health = () => {
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState([]);
   const [trends, setTrends] = useState({ currentMonth: {}, lastMonth: {} });
-  const [message, setMessage] = useState('');
+  const [chartData, setChartData] = useState([]);
 
   const fetchData = async () => {
     try {
@@ -36,6 +37,20 @@ const Health = () => {
       const current = { 'Naproxeno': 0, 'Imigran': 0 };
       const previous = { 'Naproxeno': 0, 'Imigran': 0 };
 
+      // Initialize chart data for the last 6 months
+      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      const chartMap = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        chartMap[key] = {
+          name: monthNames[d.getMonth()],
+          Naproxeno: 0,
+          Imigran: 0,
+          timestamp: d.getTime()
+        };
+      }
+
       trendData?.forEach(row => {
         // Simple string matching for month comparison
         const rowDate = new Date(row.mes);
@@ -49,9 +64,18 @@ const Health = () => {
 
         if (isCurrentMonth) current[type] += Number(row.cantidad);
         if (isLastMonth) previous[type] += Number(row.cantidad);
+
+        // Chart mapping
+        const key = `${rowDate.getFullYear()}-${rowDate.getMonth()}`;
+        if (chartMap[key]) {
+          chartMap[key][type] += Number(row.cantidad);
+        }
       });
 
       setTrends({ currentMonth: current, lastMonth: previous });
+      
+      const processedChartData = Object.values(chartMap).sort((a, b) => a.timestamp - b.timestamp);
+      setChartData(processedChartData);
 
     } catch (error) {
       console.error('Error fetching health data:', error);
@@ -175,6 +199,50 @@ const Health = () => {
             </div>
             <p className="text-[10px] text-rose-500 font-medium">Mes anterior: {trends.lastMonth['Imigran']}</p>
           </div>
+        </div>
+      </section>
+
+      {/* Informe Médico (Gráfica) */}
+      <section className="bg-white rounded-2xl p-5 shadow-sm border border-purple-100">
+        <h2 className="text-lg font-semibold text-purple-900 mb-4 flex items-center gap-2">
+          <FileText className="w-5 h-5 text-purple-600" />
+          Informe Médico
+        </h2>
+        
+        <div className="h-64 w-full mb-6">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+              <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+              <Tooltip cursor={{fill: '#f3f4f6'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+              <Legend 
+                verticalAlign="bottom" 
+                height={36} 
+                content={() => (
+                  <div className="flex justify-center gap-4 text-xs font-medium mt-4">
+                    <span className="flex items-center gap-1 text-orange-700">🟠 Naproxeno (Leve)</span>
+                    <span className="flex items-center gap-1 text-rose-700">🔴 Imigran (Fuerte)</span>
+                  </div>
+                )} 
+              />
+              <ReferenceLine y={30} stroke="#9333ea" strokeDasharray="3 3" label={{ position: 'top', value: 'Tryptizol diario', fill: '#9333ea', fontSize: 10 }} />
+              <Bar dataKey="Naproxeno" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              <Bar dataKey="Imigran" fill="#e11d48" radius={[4, 4, 0, 0]} maxBarSize={40} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mt-2">
+          <p className="text-sm text-purple-800 font-medium leading-relaxed">
+            Este mes: <strong className="text-orange-700">{trends.currentMonth['Naproxeno']} Naproxenos</strong> y <strong className="text-rose-700">{trends.currentMonth['Imigran']} Imigran</strong>. <br/>
+            Evolución vs mes anterior: <strong>{
+              (trends.currentMonth['Naproxeno'] + trends.currentMonth['Imigran']) > 
+              (trends.lastMonth['Naproxeno'] + trends.lastMonth['Imigran']) ? 'Subió ⬆️' : 
+              (trends.currentMonth['Naproxeno'] + trends.currentMonth['Imigran']) < 
+              (trends.lastMonth['Naproxeno'] + trends.lastMonth['Imigran']) ? 'Bajó ⬇️' : 'Se mantuvo igual'
+            }</strong>
+          </p>
         </div>
       </section>
 
