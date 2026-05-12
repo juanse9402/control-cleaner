@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Pill, Syringe, TrendingDown, TrendingUp, AlertCircle, Clock, FileText } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { useState, useEffect, useMemo } from 'react';
+import { Pill, Syringe, TrendingDown, TrendingUp, AlertCircle, Clock, FileText, CalendarDays } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceArea } from 'recharts';
 import { supabase } from '../lib/supabase';
 
 const Health = () => {
@@ -8,6 +8,12 @@ const Health = () => {
   const [logs, setLogs] = useState([]);
   const [trends, setTrends] = useState({ currentMonth: {}, lastMonth: {} });
   const [chartData, setChartData] = useState([]);
+  
+  const [allRecords, setAllRecords] = useState([]);
+  const [allCycles, setAllCycles] = useState([]);
+  const now = new Date();
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
 
   const fetchData = async () => {
     try {
@@ -37,22 +43,7 @@ const Health = () => {
       const current = { 'Naproxeno': 0, 'Imigran': 0 };
       const previous = { 'Naproxeno': 0, 'Imigran': 0 };
 
-      // Initialize chart data for the last 6 months
-      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      const chartMap = {};
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const key = `${d.getFullYear()}-${d.getMonth()}`;
-        chartMap[key] = {
-          name: monthNames[d.getMonth()],
-          Naproxeno: 0,
-          Imigran: 0,
-          timestamp: d.getTime()
-        };
-      }
-
       trendData?.forEach(row => {
-        // Simple string matching for month comparison
         const rowDate = new Date(row.mes);
         const isCurrentMonth = rowDate.getFullYear() === now.getFullYear() && rowDate.getMonth() === now.getMonth();
         const isLastMonth = rowDate.getFullYear() === lastMonthDate.getFullYear() && rowDate.getMonth() === lastMonthDate.getMonth();
@@ -64,18 +55,16 @@ const Health = () => {
 
         if (isCurrentMonth) current[type] += Number(row.cantidad);
         if (isLastMonth) previous[type] += Number(row.cantidad);
-
-        // Chart mapping
-        const key = `${rowDate.getFullYear()}-${rowDate.getMonth()}`;
-        if (chartMap[key]) {
-          chartMap[key][type] += Number(row.cantidad);
-        }
       });
 
       setTrends({ currentMonth: current, lastMonth: previous });
+
+      // Fetch all records and cycles for the daily chart
+      const { data: recordsData } = await supabase.from('migraña_registros').select('*');
+      const { data: cycleData } = await supabase.from('ciclo_menstrual').select('*');
       
-      const processedChartData = Object.values(chartMap).sort((a, b) => a.timestamp - b.timestamp);
-      setChartData(processedChartData);
+      setAllRecords(recordsData || []);
+      setAllCycles(cycleData || []);
 
     } catch (error) {
       console.error('Error fetching health data:', error);
@@ -106,6 +95,23 @@ const Health = () => {
     }
   };
 
+  const handleRegla = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('ciclo_menstrual')
+        .insert([{ fecha: new Date().toISOString() }]);
+
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Error logging regla:', error);
+      alert('Hubo un error al guardar el registro de regla.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatDate = (isoString) => {
     const date = new Date(isoString);
     return date.toLocaleString('es-ES', { 
@@ -119,10 +125,55 @@ const Health = () => {
       return <span className="flex items-center text-xs text-red-500 font-medium"><TrendingUp className="w-3 h-3 mr-1" /> Sube (+{current - last})</span>;
     }
     if (current < last) {
-      return <span className="flex items-center text-xs text-green-600 font-medium"><TrendingDown className="w-3 h-3 mr-1" /> Baja ({current - last})</span>;
+      return <span className="flex items-center text-xs text-green-600 font-medium"><TrendingDown className="w-3 h-3 mr-1" /> Baja ({last - current})</span>;
     }
     return <span className="text-xs text-gray-400 font-medium">Igual</span>;
   };
+
+  // Prepare daily data
+  const { dailyData, reglaStats } = useMemo(() => {
+    if (!selectedMonth) return { dailyData: [], reglaStats: { total: 0, inRegla: 0 } };
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    const dailyMap = {};
+    for(let i = 1; i <= daysInMonth; i++) {
+      dailyMap[i] = { name: String(i), day: i, Naproxeno: 0, Imigran: 0, isRegla: false };
+    }
+
+    // Mark regla days
+    allCycles.forEach(c => {
+      const d = new Date(c.fecha);
+      if (d.getFullYear() === year && (d.getMonth() + 1) === month) {
+        dailyMap[d.getDate()].isRegla = true;
+      }
+    });
+
+    let total = 0;
+    let inRegla = 0;
+
+    allRecords.forEach(r => {
+      const d = new Date(r.fecha);
+      if (d.getFullYear() === year && (d.getMonth() + 1) === month) {
+        let type = 'Naproxeno';
+        if (r.tipo_tratamiento.includes('Imigran') || r.tipo_tratamiento.includes('Inyección')) {
+          type = 'Imigran';
+        }
+        if (dailyMap[d.getDate()]) {
+          dailyMap[d.getDate()][type] += 1;
+          total += 1;
+          if (dailyMap[d.getDate()].isRegla) {
+            inRegla += 1;
+          }
+        }
+      }
+    });
+
+    return {
+      dailyData: Object.values(dailyMap),
+      reglaStats: { total, inRegla }
+    };
+  }, [selectedMonth, allRecords, allCycles]);
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in pb-8">
@@ -162,6 +213,15 @@ const Health = () => {
           >
             <Syringe className="w-6 h-6" />
             + Imigran (Inyección - Dolor Fuerte)
+          </button>
+
+          <button
+            onClick={handleRegla}
+            disabled={loading}
+            className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-medium transition-colors shadow-sm active:scale-95 mt-2"
+          >
+            <CalendarDays className="w-6 h-6" />
+            Marcar día de Regla
           </button>
         </div>
       </section>
@@ -204,44 +264,52 @@ const Health = () => {
 
       {/* Informe Médico (Gráfica) */}
       <section className="bg-white rounded-2xl p-5 shadow-sm border border-purple-100">
-        <h2 className="text-lg font-semibold text-purple-900 mb-4 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-purple-600" />
-          Informe Médico
-        </h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-lg font-semibold text-purple-900 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-purple-600" />
+            Informe Médico
+          </h2>
+          <input 
+            type="month" 
+            value={selectedMonth} 
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="border border-purple-200 text-purple-800 text-sm rounded-lg px-2 py-1 bg-purple-50 focus:outline-none focus:border-purple-500"
+          />
+        </div>
         
         <div className="h-64 w-full mb-6">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+            <LineChart data={dailyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#6b7280' }} />
               <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
               <Tooltip cursor={{fill: '#f3f4f6'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+              
+              {/* Highlight menstruation days */}
+              {dailyData.filter(d => d.isRegla).map((d) => (
+                <ReferenceArea key={`regla-${d.day}`} x1={d.name} x2={d.name} fill="#fbcfe8" fillOpacity={0.4} />
+              ))}
+
               <Legend 
                 verticalAlign="bottom" 
                 height={36} 
                 content={() => (
                   <div className="flex justify-center gap-4 text-xs font-medium mt-4">
-                    <span className="flex items-center gap-1 text-orange-700">🟠 Naproxeno (Leve)</span>
-                    <span className="flex items-center gap-1 text-rose-700">🔴 Imigran (Fuerte)</span>
+                    <span className="flex items-center gap-1 text-orange-700">🟠 Naproxeno</span>
+                    <span className="flex items-center gap-1 text-rose-700">🔴 Imigran</span>
+                    <span className="flex items-center gap-1 text-pink-500">🌸 Regla</span>
                   </div>
                 )} 
               />
-              <ReferenceLine y={30} stroke="#9333ea" strokeDasharray="3 3" label={{ position: 'top', value: 'Tryptizol diario', fill: '#9333ea', fontSize: 10 }} />
-              <Bar dataKey="Naproxeno" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={40} />
-              <Bar dataKey="Imigran" fill="#e11d48" radius={[4, 4, 0, 0]} maxBarSize={40} />
-            </BarChart>
+              <Line type="monotone" dataKey="Naproxeno" stroke="#f97316" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
+              <Line type="monotone" dataKey="Imigran" stroke="#e11d48" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
 
         <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mt-2">
           <p className="text-sm text-purple-800 font-medium leading-relaxed">
-            Este mes: <strong className="text-orange-700">{trends.currentMonth['Naproxeno']} Naproxenos</strong> y <strong className="text-rose-700">{trends.currentMonth['Imigran']} Imigran</strong>. <br/>
-            Evolución vs mes anterior: <strong>{
-              (trends.currentMonth['Naproxeno'] + trends.currentMonth['Imigran']) > 
-              (trends.lastMonth['Naproxeno'] + trends.lastMonth['Imigran']) ? 'Subió ⬆️' : 
-              (trends.currentMonth['Naproxeno'] + trends.currentMonth['Imigran']) < 
-              (trends.lastMonth['Naproxeno'] + trends.lastMonth['Imigran']) ? 'Bajó ⬇️' : 'Se mantuvo igual'
-            }</strong>
+            Este mes, el <strong className="text-pink-600 text-base">{reglaStats.total > 0 ? Math.round((reglaStats.inRegla / reglaStats.total) * 100) : 0}%</strong> de las crisis ocurrieron durante los días de regla.
           </p>
         </div>
       </section>

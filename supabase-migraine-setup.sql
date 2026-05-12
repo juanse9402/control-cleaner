@@ -28,3 +28,19 @@ GROUP BY tipo_tratamiento, DATE_TRUNC('month', fecha);
 
 -- 4. Grant access to the view
 GRANT SELECT ON vista_tendencia_migraña TO anon, authenticated;
+
+-- 5. Create the ciclo_menstrual table
+CREATE TABLE IF NOT EXISTS ciclo_menstrual (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fecha timestamp with time zone NOT NULL DEFAULT now()
+);
+
+ALTER TABLE ciclo_menstrual ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Permitir insertar a todos en ciclo" ON ciclo_menstrual
+  FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY "Permitir leer a todos en ciclo" ON ciclo_menstrual
+  FOR SELECT
+  USING (true);
