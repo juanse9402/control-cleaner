@@ -1,6 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceArea } from 'recharts';
 
-export default function HealthChart({ dailyData, refAreasRegla, refAreasPredicted }) {
+export default function MigraineChart({ dailyData, refAreasRegla, refAreasPredicted }) {
   if (!dailyData || dailyData.length === 0) return null;
 
   return (
