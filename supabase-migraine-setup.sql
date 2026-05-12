@@ -44,3 +44,28 @@ CREATE POLICY "Permitir insertar a todos en ciclo" ON ciclo_menstrual
 CREATE POLICY "Permitir leer a todos en ciclo" ON ciclo_menstrual
   FOR SELECT
   USING (true);
+
+-- 6. Create the pagos_mensuales table
+CREATE TABLE IF NOT EXISTS pagos_mensuales (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  cliente_id uuid NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+  mes text NOT NULL,
+  pagado boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  UNIQUE (cliente_id, mes)
+);
+
+ALTER TABLE pagos_mensuales ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Permitir insertar pagos" ON pagos_mensuales
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Permitir leer pagos" ON pagos_mensuales
+  FOR SELECT USING (true);
+
+CREATE POLICY "Permitir actualizar pagos" ON pagos_mensuales
+  FOR UPDATE USING (true);
+
+CREATE POLICY "Permitir borrar pagos" ON pagos_mensuales
+  FOR DELETE USING (true);
+
