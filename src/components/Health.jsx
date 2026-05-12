@@ -131,23 +131,84 @@ const Health = () => {
   };
 
   // Prepare daily data
-  const { dailyData, reglaStats } = useMemo(() => {
-    if (!selectedMonth) return { dailyData: [], reglaStats: { total: 0, inRegla: 0 } };
+  const { dailyData, reglaStats, refAreasRegla, refAreasPredicted, avgCycleLength } = useMemo(() => {
+    if (!selectedMonth) return { dailyData: [], reglaStats: { diasDolor: 0, diasDolorEnRegla: 0 }, refAreasRegla: [], refAreasPredicted: [], avgCycleLength: 28 };
+    
     const [year, month] = selectedMonth.split('-').map(Number);
     const daysInMonth = new Date(year, month, 0).getDate();
     
-    const dailyMap = {};
-    for(let i = 1; i <= daysInMonth; i++) {
-      dailyMap[i] = { name: String(i), day: i, Naproxeno: 0, Imigran: 0, isRegla: false };
+    // 1. Calculate Average Cycle Length
+    let sortedCycles = [...allCycles].map(c => new Date(c.fecha)).sort((a, b) => a - b);
+    let avgLength = 28; // Default
+    if (sortedCycles.length > 1) {
+      let totalDiff = 0;
+      for (let i = 1; i < sortedCycles.length; i++) {
+        // time diff in days
+        totalDiff += (sortedCycles[i] - sortedCycles[i - 1]) / (1000 * 60 * 60 * 24);
+      }
+      avgLength = Math.round(totalDiff / (sortedCycles.length - 1));
     }
 
-    // Mark regla days
-    allCycles.forEach(c => {
-      const d = new Date(c.fecha);
-      if (d.getFullYear() === year && (d.getMonth() + 1) === month) {
-        dailyMap[d.getDate()].isRegla = true;
+    // 2. Global Period Days (start + 4 days)
+    const periodDaysGlobal = new Set();
+    sortedCycles.forEach(d => {
+      for (let i = 0; i <= 4; i++) {
+        const pd = new Date(d);
+        pd.setDate(pd.getDate() + i);
+        periodDaysGlobal.add(`${pd.getFullYear()}-${pd.getMonth() + 1}-${pd.getDate()}`);
       }
     });
+
+    // 3. Global Predicted Next Period (last cycle + avg length to +4 days)
+    const predictedDaysGlobal = new Set();
+    if (sortedCycles.length > 0) {
+      const lastCycle = sortedCycles[sortedCycles.length - 1];
+      const nextCycle = new Date(lastCycle);
+      nextCycle.setDate(nextCycle.getDate() + avgLength);
+      
+      for (let i = 0; i <= 4; i++) {
+        const pd = new Date(nextCycle);
+        pd.setDate(pd.getDate() + i);
+        predictedDaysGlobal.add(`${pd.getFullYear()}-${pd.getMonth() + 1}-${pd.getDate()}`);
+      }
+    }
+
+    const dailyMap = {};
+    for(let i = 1; i <= daysInMonth; i++) {
+      const dateStr = `${year}-${month}-${i}`;
+      dailyMap[i] = { 
+        name: String(i), 
+        day: i, 
+        Naproxeno: 0, 
+        Imigran: 0, 
+        isRegla: periodDaysGlobal.has(dateStr),
+        isPredicted: predictedDaysGlobal.has(dateStr)
+      };
+    }
+
+    // 4. Calculate continuous ReferenceAreas
+    const refAreasRegla = [];
+    const refAreasPredicted = [];
+    let startRegla = null;
+    let startPredicted = null;
+
+    for (let i = 1; i <= daysInMonth; i++) {
+      const d = dailyMap[i];
+      // Regla areas
+      if (d.isRegla && !startRegla) startRegla = String(i);
+      if (!d.isRegla && startRegla) {
+        refAreasRegla.push({ start: startRegla, end: String(i - 1) });
+        startRegla = null;
+      }
+      // Predicted areas
+      if (d.isPredicted && !startPredicted) startPredicted = String(i);
+      if (!d.isPredicted && startPredicted) {
+        refAreasPredicted.push({ start: startPredicted, end: String(i - 1) });
+        startPredicted = null;
+      }
+    }
+    if (startRegla) refAreasRegla.push({ start: startRegla, end: String(daysInMonth) });
+    if (startPredicted) refAreasPredicted.push({ start: startPredicted, end: String(daysInMonth) });
 
     allRecords.forEach(r => {
       const d = new Date(r.fecha);
@@ -176,7 +237,10 @@ const Health = () => {
 
     return {
       dailyData: Object.values(dailyMap),
-      reglaStats: { diasDolor, diasDolorEnRegla }
+      reglaStats: { diasDolor, diasDolorEnRegla },
+      refAreasRegla,
+      refAreasPredicted,
+      avgCycleLength
     };
   }, [selectedMonth, allRecords, allCycles]);
 
@@ -290,19 +354,24 @@ const Health = () => {
               <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
               <Tooltip cursor={{fill: '#f3f4f6'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
               
-              {/* Highlight menstruation days */}
-              {dailyData.filter(d => d.isRegla).map((d) => (
-                <ReferenceArea key={`regla-${d.day}`} x1={d.name} x2={d.name} fill="#fbcfe8" fillOpacity={0.4} />
+              {/* Highlight menstruation days (behind lines) */}
+              {refAreasRegla.map((area, idx) => (
+                <ReferenceArea key={`regla-${idx}`} x1={area.start} x2={area.end} y1={0} y2={4} fill="#FFD1DC" fillOpacity={0.5} />
+              ))}
+              {/* Highlight predicted menstruation days */}
+              {refAreasPredicted.map((area, idx) => (
+                <ReferenceArea key={`pred-${idx}`} x1={area.start} x2={area.end} y1={0} y2={4} fill="#e5e7eb" fillOpacity={0.6} />
               ))}
 
               <Legend 
                 verticalAlign="bottom" 
                 height={36} 
                 content={() => (
-                  <div className="flex justify-center gap-4 text-xs font-medium mt-4">
+                  <div className="flex justify-center gap-4 text-xs font-medium mt-4 flex-wrap">
                     <span className="flex items-center gap-1 text-orange-700">🟠 Naproxeno</span>
                     <span className="flex items-center gap-1 text-rose-700">🔴 Imigran</span>
                     <span className="flex items-center gap-1 text-pink-500">🌸 Regla</span>
+                    <span className="flex items-center gap-1 text-gray-500">⚪ Predicción</span>
                   </div>
                 )} 
               />
@@ -312,10 +381,13 @@ const Health = () => {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mt-2">
+        <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mt-2 flex flex-col gap-2">
           <p className="text-sm text-purple-800 font-medium leading-relaxed">
             Este mes tuviste <strong className="text-purple-900 text-base">{reglaStats.diasDolor}</strong> días de dolor. <strong className="text-pink-600 text-base">{reglaStats.diasDolorEnRegla}</strong> de esos días coincidieron con tu ciclo menstrual.
           </p>
+          <div className="bg-white/60 p-3 rounded-lg border border-purple-100 text-xs text-purple-700">
+            <strong>Análisis del Ciclo:</strong> Tu promedio entre reglas es de <strong>{avgCycleLength} días</strong>. He marcado con gris los días en los que probablemente iniciará tu próximo ciclo para que estés prevenida.
+          </div>
         </div>
       </section>
 
