@@ -59,12 +59,20 @@ export default function HealthView() {
   const handleLog = async (tipo) => {
     setLoading(true);
     try {
-      const { error } = await supabase.from('migraña_registros').insert([{ fecha: new Date().toISOString(), tipo_tratamiento: tipo }]);
-      if (error) throw error;
+      // fecha en formato YYYY-MM-DD para compatibilidad con la columna
+      const today = new Date();
+      const fecha = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const { error } = await supabase
+        .from('migraña_registros')
+        .insert([{ fecha, tipo_tratamiento: tipo }]);
+      if (error) {
+        console.error('Error detallado (migraña_registros):', error);
+        throw error;
+      }
       await fetchData();
     } catch (err) {
-      console.error(err);
-      alert('Error al guardar el registro.');
+      console.error('handleLog catch:', err);
+      alert(`Error al guardar el registro: ${err?.message || err}`);
     } finally {
       setLoading(false);
     }
@@ -73,12 +81,19 @@ export default function HealthView() {
   const handleRegla = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.from('ciclo_menstrual').insert([{ fecha: new Date().toISOString() }]);
-      if (error) throw error;
+      const today = new Date();
+      const fecha = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const { error } = await supabase
+        .from('ciclo_menstrual')
+        .insert([{ fecha }]);
+      if (error) {
+        console.error('Error detallado (ciclo_menstrual):', error);
+        throw error;
+      }
       await fetchData();
     } catch (err) {
-      console.error(err);
-      alert('Error al guardar día de regla.');
+      console.error('handleRegla catch:', err);
+      alert(`Error al guardar día de regla: ${err?.message || err}`);
     } finally {
       setLoading(false);
     }
