@@ -1,25 +1,64 @@
 // HealthView.jsx — Sección de Salud completamente independiente.
 // NO importa nada de App.jsx. Solo depende de supabaseClient y MigraineChart.
-import { useState, useEffect, useMemo } from 'react';
-import { Pill, Syringe, TrendingDown, TrendingUp, AlertCircle, Clock, FileText, CalendarDays } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Pill, Syringe, TrendingDown, TrendingUp, AlertCircle, Clock, FileText, CalendarDays, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import MigraineChart from './MigraineChart';
+
+// ─── Utilidades ────────────────────────────────────────────────────────────────
 
 function getNowMonthStr() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export default function HealthView() {
-  const [loading, setLoading] = useState(false);
-  const [logs, setLogs] = useState([]);
-  const [trends, setTrends] = useState({ currentMonth: { Naproxeno: 0, Imigran: 0 }, lastMonth: { Naproxeno: 0, Imigran: 0 } });
-  const [allRecords, setAllRecords] = useState([]);
-  const [allCycles, setAllCycles] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState(getNowMonthStr);
+/** Fecha local en formato YYYY-MM-DD, sin desfase de zona horaria. */
+function getTodayISO() {
+  return new Date().toISOString().split('T')[0];
+}
 
-  // ─── Fetch ───────────────────────────────────────────────────
-  const fetchData = async () => {
+/** Normaliza el nombre del medicamento: primera letra mayúscula, resto sin tocar. */
+function normalizeTipo(tipo) {
+  if (!tipo) return tipo;
+  return tipo.charAt(0).toUpperCase() + tipo.slice(1);
+}
+
+// ─── Toast Component ───────────────────────────────────────────────────────────
+
+function Toast({ message, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg animate-fade-in"
+    >
+      <CheckCircle className="w-4 h-4 shrink-0" />
+      {message}
+    </div>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
+
+export default function HealthView() {
+  const [loading, setLoading]       = useState(false);
+  const [logs, setLogs]             = useState([]);
+  const [trends, setTrends]         = useState({ currentMonth: { Naproxeno: 0, Imigran: 0 }, lastMonth: { Naproxeno: 0, Imigran: 0 } });
+  const [allRecords, setAllRecords] = useState([]);
+  const [allCycles, setAllCycles]   = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(getNowMonthStr);
+  const [toast, setToast]           = useState(null); // { message: string }
+
+  const showToast = useCallback((message) => setToast({ message }), []);
+  const hideToast = useCallback(() => setToast(null), []);
+
+  // ─── Fetch ─────────────────────────────────────────────────────────────────
+  const fetchData = useCallback(async () => {
     try {
       const [logsRes, trendRes, recordsRes, cyclesRes] = await Promise.all([
         supabase.from('migraña_registros').select('*').order('fecha', { ascending: false }).limit(5),
@@ -32,46 +71,60 @@ export default function HealthView() {
       setAllRecords(recordsRes.data || []);
       setAllCycles(cyclesRes.data || []);
 
-      // Trends
+      // Calcular tendencias por mes
       const now = new Date();
-      const current = { Naproxeno: 0, Imigran: 0 };
+      const current  = { Naproxeno: 0, Imigran: 0 };
       const previous = { Naproxeno: 0, Imigran: 0 };
       (trendRes.data || []).forEach((row) => {
-        const d = new Date(row.mes);
-        const isNow = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-        const isLast = d.getFullYear() === new Date(now.getFullYear(), now.getMonth() - 1).getFullYear()
-          && d.getMonth() === new Date(now.getFullYear(), now.getMonth() - 1).getMonth();
-        const type = row.tipo_tratamiento.includes('Imigran') || row.tipo_tratamiento.includes('Inyección') ? 'Imigran' : 'Naproxeno';
-        if (isNow) current[type] += Number(row.cantidad);
+        const d      = new Date(row.mes);
+        const isNow  = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        const isLast =
+          d.getFullYear() === new Date(now.getFullYear(), now.getMonth() - 1).getFullYear() &&
+          d.getMonth()    === new Date(now.getFullYear(), now.getMonth() - 1).getMonth();
+        const type = row.tipo_tratamiento.includes('Imigran') || row.tipo_tratamiento.includes('Inyección')
+          ? 'Imigran'
+          : 'Naproxeno';
+        if (isNow)  current[type]  += Number(row.cantidad);
         if (isLast) previous[type] += Number(row.cantidad);
       });
       setTrends({ currentMonth: current, lastMonth: previous });
     } catch (err) {
       console.error('HealthView fetchData error:', err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
-  // ─── Handlers ────────────────────────────────────────────────
-  const handleLog = async (tipo) => {
+  // ─── Handlers ──────────────────────────────────────────────────────────────
+
+  const handleLog = async (tipoRaw) => {
     setLoading(true);
     try {
-      // fecha en formato YYYY-MM-DD para compatibilidad con la columna
-      const today = new Date();
-      const fecha = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      // 1. Normalizar: primera letra mayúscula
+      const tipo_tratamiento = normalizeTipo(tipoRaw);
+
+      // 2. Fecha local YYYY-MM-DD (sin desfase de zona horaria)
+      const fecha = getTodayISO();
+
       const { error } = await supabase
         .from('migraña_registros')
-        .insert([{ fecha, tipo_tratamiento: tipo }]);
+        .insert([{ fecha, tipo_tratamiento }]);
+
       if (error) {
         console.error('Error detallado (migraña_registros):', error);
         throw error;
       }
+
+      // 3. Refrescar datos para actualizar la gráfica inmediatamente
       await fetchData();
+
+      // 4. Toast de éxito con el nombre del medicamento
+      const nombre = tipo_tratamiento.split(' ')[0]; // "Naproxeno" o "Imigran"
+      showToast(`✓ Registro guardado: ${nombre}`);
     } catch (err) {
-      console.error('handleLog catch:', err);
+      console.error('handleLog error:', err);
       alert(`Error al guardar el registro: ${err?.message || err}`);
     } finally {
       setLoading(false);
@@ -81,25 +134,30 @@ export default function HealthView() {
   const handleRegla = async () => {
     setLoading(true);
     try {
-      const today = new Date();
-      const fecha = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const fecha = getTodayISO();
+
       const { error } = await supabase
         .from('ciclo_menstrual')
         .insert([{ fecha }]);
+
       if (error) {
         console.error('Error detallado (ciclo_menstrual):', error);
         throw error;
       }
+
+      // Refrescar para actualizar predicción en la gráfica
       await fetchData();
+      showToast('✓ Día de regla registrado');
     } catch (err) {
-      console.error('handleRegla catch:', err);
+      console.error('handleRegla error:', err);
       alert(`Error al guardar día de regla: ${err?.message || err}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // ─── Helpers ─────────────────────────────────────────────────
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
   const formatDate = (iso) =>
     new Date(iso).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -109,23 +167,30 @@ export default function HealthView() {
     return <span className="text-xs text-gray-400 font-medium">Igual</span>;
   };
 
-  // ─── Chart data ───────────────────────────────────────────────
+  // ─── Chart data ────────────────────────────────────────────────────────────
+
   const { dailyData, reglaStats, refAreasRegla, refAreasPredicted, avgCycleLength } = useMemo(() => {
-    const fallback = { dailyData: [], reglaStats: { diasDolor: 0, diasDolorEnRegla: 0 }, refAreasRegla: [], refAreasPredicted: [], avgCycleLength: 28 };
+    const fallback = {
+      dailyData: [],
+      reglaStats: { diasDolor: 0, diasDolorEnRegla: 0 },
+      refAreasRegla: [],
+      refAreasPredicted: [],
+      avgCycleLength: 28,
+    };
     if (!selectedMonth) return fallback;
 
     const [year, month] = selectedMonth.split('-').map(Number);
-    const daysInMonth = new Date(year, month, 0).getDate();
+    const daysInMonth   = new Date(year, month, 0).getDate();
 
-    // Average cycle length
+    // Longitud media del ciclo
     const sorted = [...allCycles].map((c) => new Date(c.fecha)).sort((a, b) => a - b);
     let avgLength = 28;
     if (sorted.length > 1) {
-      const total = sorted.reduce((acc, d, i) => i === 0 ? 0 : acc + (d - sorted[i - 1]) / 86400000, 0);
-      avgLength = Math.round(total / (sorted.length - 1));
+      const total = sorted.reduce((acc, d, i) => (i === 0 ? 0 : acc + (d - sorted[i - 1]) / 86400000), 0);
+      avgLength   = Math.round(total / (sorted.length - 1));
     }
 
-    // Period days: start + 4
+    // Días de regla: inicio + 4 días
     const periodSet = new Set();
     sorted.forEach((d) => {
       for (let i = 0; i <= 4; i++) {
@@ -135,7 +200,7 @@ export default function HealthView() {
       }
     });
 
-    // Predicted next period
+    // Predicción del próximo ciclo
     const predictedSet = new Set();
     if (sorted.length > 0) {
       const next = new Date(sorted[sorted.length - 1]);
@@ -147,7 +212,7 @@ export default function HealthView() {
       }
     }
 
-    // Build daily map
+    // Mapa diario del mes
     const map = {};
     for (let i = 1; i <= daysInMonth; i++) {
       const key = `${year}-${month}-${i}`;
@@ -157,25 +222,27 @@ export default function HealthView() {
     allRecords.forEach((r) => {
       const d = new Date(r.fecha);
       if (d.getFullYear() === year && d.getMonth() + 1 === month && map[d.getDate()]) {
-        const type = r.tipo_tratamiento.includes('Imigran') || r.tipo_tratamiento.includes('Inyección') ? 'Imigran' : 'Naproxeno';
+        const type = r.tipo_tratamiento.includes('Imigran') || r.tipo_tratamiento.includes('Inyección')
+          ? 'Imigran'
+          : 'Naproxeno';
         map[d.getDate()][type] += 1;
       }
     });
 
-    // Continuous reference area ranges
+    // Rangos continuos para ReferenceArea
     const areasRegla = [];
-    const areasPred = [];
+    const areasPred  = [];
     let sR = null, sP = null;
     for (let i = 1; i <= daysInMonth; i++) {
-      if (map[i].isRegla && !sR) sR = String(i);
-      if (!map[i].isRegla && sR) { areasRegla.push({ start: sR, end: String(i - 1) }); sR = null; }
+      if (map[i].isRegla    && !sR) sR = String(i);
+      if (!map[i].isRegla   &&  sR) { areasRegla.push({ start: sR, end: String(i - 1) }); sR = null; }
       if (map[i].isPredicted && !sP) sP = String(i);
       if (!map[i].isPredicted && sP) { areasPred.push({ start: sP, end: String(i - 1) }); sP = null; }
     }
     if (sR) areasRegla.push({ start: sR, end: String(daysInMonth) });
     if (sP) areasPred.push({ start: sP, end: String(daysInMonth) });
 
-    // Stats
+    // Estadísticas
     let diasDolor = 0, diasDolorEnRegla = 0;
     Object.values(map).forEach((d) => {
       if (d.Naproxeno > 0 || d.Imigran > 0) {
@@ -193,9 +260,12 @@ export default function HealthView() {
     };
   }, [selectedMonth, allRecords, allCycles]);
 
-  // ─── Render ───────────────────────────────────────────────────
+  // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-6 animate-fade-in pb-8">
+
+      {/* Toast de éxito */}
+      {toast && <Toast message={toast.message} onClose={hideToast} />}
 
       {/* Tratamiento Diario */}
       <div className="bg-purple-100/60 rounded-xl p-4 border border-purple-200 flex items-center gap-4 shadow-sm">
@@ -214,16 +284,28 @@ export default function HealthView() {
           <AlertCircle className="w-5 h-5 text-purple-600" /> Registro Rápido
         </h2>
         <div className="flex flex-col gap-3">
-          <button onClick={() => handleLog('Naproxeno (Dolor Leve)')} disabled={loading}
-            className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-colors shadow-sm active:scale-95">
+          <button
+            id="btn-naproxeno"
+            onClick={() => handleLog('Naproxeno (Dolor Leve)')}
+            disabled={loading}
+            className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-medium transition-colors shadow-sm active:scale-95"
+          >
             <Pill className="w-6 h-6" /> + Naproxeno (Dolor Leve)
           </button>
-          <button onClick={() => handleLog('Imigran (Inyección - Dolor Fuerte)')} disabled={loading}
-            className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-medium transition-colors shadow-sm active:scale-95">
+          <button
+            id="btn-imigran"
+            onClick={() => handleLog('Imigran (Inyección - Dolor Fuerte)')}
+            disabled={loading}
+            className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-xl font-medium transition-colors shadow-sm active:scale-95"
+          >
             <Syringe className="w-6 h-6" /> + Imigran (Inyección - Dolor Fuerte)
           </button>
-          <button onClick={handleRegla} disabled={loading}
-            className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-medium transition-colors shadow-sm active:scale-95 mt-1">
+          <button
+            id="btn-regla"
+            onClick={handleRegla}
+            disabled={loading}
+            className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl font-medium transition-colors shadow-sm active:scale-95 mt-1"
+          >
             <CalendarDays className="w-6 h-6" /> Marcar día de Regla
           </button>
         </div>
@@ -260,8 +342,12 @@ export default function HealthView() {
           <h2 className="text-lg font-semibold text-purple-900 flex items-center gap-2">
             <FileText className="w-5 h-5 text-purple-600" /> Informe Médico
           </h2>
-          <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}
-            className="border border-purple-200 text-purple-800 text-sm rounded-lg px-2 py-1 bg-purple-50 focus:outline-none focus:border-purple-500" />
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="border border-purple-200 text-purple-800 text-sm rounded-lg px-2 py-1 bg-purple-50 focus:outline-none focus:border-purple-500"
+          />
         </div>
 
         <div className="h-64 w-full mb-4">
