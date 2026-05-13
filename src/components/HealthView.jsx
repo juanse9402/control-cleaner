@@ -23,6 +23,15 @@ function normalizeTipo(tipo) {
   return tipo.charAt(0).toUpperCase() + tipo.slice(1);
 }
 
+/**
+ * Mapeo estricto: clave interna → valor exacto que acepta Supabase.
+ * Garantiza consistencia sin importar el texto del botón.
+ */
+const TIPO_MAP = {
+  naproxeno: 'Naproxeno',
+  imigran:   'Imigran',
+};
+
 // ─── Toast Component ───────────────────────────────────────────────────────────
 
 function Toast({ message, onClose }) {
@@ -99,30 +108,33 @@ export default function HealthView() {
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleLog = async (tipoRaw) => {
+  const handleLog = async (tipoKey) => {
     setLoading(true);
     try {
-      // 1. Normalizar: primera letra mayúscula
-      const tipo_tratamiento = normalizeTipo(tipoRaw);
+      // 1. Mapeo estricto: 'naproxeno' → 'Naproxeno', 'imigran' → 'Imigran'
+      const tipo_tratamiento = (TIPO_MAP[tipoKey] ?? normalizeTipo(tipoKey)).trim();
 
       // 2. Fecha local YYYY-MM-DD (sin desfase de zona horaria)
       const fecha = getTodayISO();
 
+      // 3. Debug: log del payload exacto antes de enviarlo
+      const payload = { fecha, tipo_tratamiento };
+      console.log('Enviando a Supabase:', payload);
+
       const { error } = await supabase
         .from('migraña_registros')
-        .insert([{ fecha, tipo_tratamiento }]);
+        .insert([payload]);
 
       if (error) {
         console.error('Error detallado (migraña_registros):', error);
         throw error;
       }
 
-      // 3. Refrescar datos para actualizar la gráfica inmediatamente
+      // 4. Refrescar datos → gráfica actualizada al instante
       await fetchData();
 
-      // 4. Toast de éxito con el nombre del medicamento
-      const nombre = tipo_tratamiento.split(' ')[0]; // "Naproxeno" o "Imigran"
-      showToast(`✓ Registro guardado: ${nombre}`);
+      // 5. Toast de éxito
+      showToast(`✓ Registro guardado: ${tipo_tratamiento}`);
     } catch (err) {
       console.error('handleLog error:', err);
       alert(`Error al guardar el registro: ${err?.message || err}`);
@@ -286,7 +298,7 @@ export default function HealthView() {
         <div className="flex flex-col gap-3">
           <button
             id="btn-naproxeno"
-            onClick={() => handleLog('Naproxeno (Dolor Leve)')}
+            onClick={() => handleLog('naproxeno')}
             disabled={loading}
             className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-medium transition-colors shadow-sm active:scale-95"
           >
@@ -294,7 +306,7 @@ export default function HealthView() {
           </button>
           <button
             id="btn-imigran"
-            onClick={() => handleLog('Imigran (Inyección - Dolor Fuerte)')}
+            onClick={() => handleLog('imigran')}
             disabled={loading}
             className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-xl font-medium transition-colors shadow-sm active:scale-95"
           >
