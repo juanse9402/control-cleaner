@@ -33,7 +33,7 @@ export default function MonthlyReport() {
         supabase
           .from('pagos_mensuales')
           .select('*')
-          .eq('mes', selectedMonth),
+          .eq('mes_año', selectedMonth),
       ]);
 
       if (!servicesRes.error && servicesRes.data) {
@@ -79,7 +79,7 @@ export default function MonthlyReport() {
         .from('pagos_mensuales')
         .select('id')
         .eq('cliente_id', clienteId)
-        .eq('mes', selectedMonth)
+        .eq('mes_año', selectedMonth)
         .maybeSingle();
 
       let dbError = null;
@@ -92,7 +92,7 @@ export default function MonthlyReport() {
       } else {
         const { error } = await supabase
           .from('pagos_mensuales')
-          .insert({ cliente_id: clienteId, mes: selectedMonth, pagado: !isPaid });
+          .insert({ cliente_id: clienteId, mes_año: selectedMonth, pagado: !isPaid });
         dbError = error;
       }
 
