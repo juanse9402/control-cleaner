@@ -74,16 +74,31 @@ export default function MonthlyReport() {
 
     setPaymentLoading(clienteId);
     try {
-      const { error } = await supabase
+      // Manual upsert to avoid requiring DB unique constraints
+      const { data: existing } = await supabase
         .from('pagos_mensuales')
-        .upsert(
-          { cliente_id: clienteId, mes: selectedMonth, pagado: !isPaid },
-          { onConflict: 'cliente_id,mes' }
-        );
+        .select('id')
+        .eq('cliente_id', clienteId)
+        .eq('mes', selectedMonth)
+        .maybeSingle();
 
-      if (error) {
-        console.error('Supabase upsert error:', error);
-        throw error;
+      let dbError = null;
+      if (existing) {
+        const { error } = await supabase
+          .from('pagos_mensuales')
+          .update({ pagado: !isPaid })
+          .eq('id', existing.id);
+        dbError = error;
+      } else {
+        const { error } = await supabase
+          .from('pagos_mensuales')
+          .insert({ cliente_id: clienteId, mes: selectedMonth, pagado: !isPaid });
+        dbError = error;
+      }
+
+      if (dbError) {
+        console.error('Supabase save error:', dbError);
+        throw dbError;
       }
 
       setPayments(prev => ({ ...prev, [clienteId]: !isPaid }));
