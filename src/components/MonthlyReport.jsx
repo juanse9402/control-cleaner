@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Calendar, User, Clock, DollarSign, Filter, MessageCircle, FileText, CheckCircle2, XCircle } from 'lucide-react';
+import { Calendar, User, Clock, DollarSign, Filter, MessageCircle, FileText, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 export default function MonthlyReport() {
   const [isLoading, setIsLoading] = useState(true);
@@ -74,24 +74,22 @@ export default function MonthlyReport() {
 
     setPaymentLoading(clienteId);
     try {
-      if (isPaid) {
-        // Delete payment record
-        await supabase
-          .from('pagos_mensuales')
-          .delete()
-          .eq('cliente_id', clienteId)
-          .eq('mes', selectedMonth);
-        setPayments(prev => { const n = { ...prev }; delete n[clienteId]; return n; });
-      } else {
-        // Upsert payment record
-        await supabase
-          .from('pagos_mensuales')
-          .upsert([{ cliente_id: clienteId, mes: selectedMonth, pagado: true }], { onConflict: 'cliente_id,mes' });
-        setPayments(prev => ({ ...prev, [clienteId]: true }));
+      const { error } = await supabase
+        .from('pagos_mensuales')
+        .upsert(
+          { cliente_id: clienteId, mes: selectedMonth, pagado: !isPaid },
+          { onConflict: 'cliente_id,mes' }
+        );
+
+      if (error) {
+        console.error('Supabase upsert error:', error);
+        throw error;
       }
+
+      setPayments(prev => ({ ...prev, [clienteId]: !isPaid }));
     } catch (err) {
       console.error('Error toggling payment:', err);
-      alert('Error al actualizar el estado de pago.');
+      alert('Error al actualizar el estado de pago. ' + err.message);
     } finally {
       setPaymentLoading(null);
     }
@@ -230,15 +228,20 @@ export default function MonthlyReport() {
                           onClick={() => togglePayment(item.id, item.nombre)}
                           disabled={isToggling}
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 ${
-                            isPaid
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                              : 'bg-red-100 text-red-600 hover:bg-red-200'
-                          } ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            isToggling 
+                              ? 'bg-gray-100 text-gray-600'
+                              : isPaid
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : 'bg-red-100 text-red-600 hover:bg-red-200'
+                          } ${isToggling ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                          {isPaid
-                            ? <><CheckCircle2 className="w-3.5 h-3.5" /> Pagado</>
-                            : <><XCircle className="w-3.5 h-3.5" /> Pendiente</>
-                          }
+                          {isToggling ? (
+                            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Guardando...</>
+                          ) : isPaid ? (
+                            <><CheckCircle2 className="w-3.5 h-3.5" /> Pagado</>
+                          ) : (
+                            <><XCircle className="w-3.5 h-3.5" /> Pendiente</>
+                          )}
                         </button>
                       </td>
                     </tr>
