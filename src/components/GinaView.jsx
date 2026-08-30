@@ -56,9 +56,6 @@ export default function GinaView({ onChangeUser }) {
   const [editNotas, setEditNotas] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-  // Filter State
-  const [selectedMonth, setSelectedMonth] = useState('all');
-
   useEffect(() => {
     fetchGinaRecords();
   }, []);
@@ -180,11 +177,29 @@ export default function GinaView({ onChangeUser }) {
     }
   };
 
-  // Filtered records for History & Audit
-  const filteredRecords = useMemo(() => {
+  // Filter State
+  const [selectedMonth, setSelectedMonth] = useState('all');
+  const [auditStartDate, setAuditStartDate] = useState('');
+  const [auditEndDate, setAuditEndDate] = useState('');
+
+  // Filtered records for History tab (by month)
+  const historyFilteredRecords = useMemo(() => {
     if (selectedMonth === 'all') return records;
     return records.filter(r => r.fecha && r.fecha.startsWith(selectedMonth));
   }, [records, selectedMonth]);
+
+  // Filtered records for Audit tab (by custom date range OR month)
+  const auditFilteredRecords = useMemo(() => {
+    return records.filter(r => {
+      if (!r.fecha) return false;
+      if (auditStartDate && r.fecha < auditStartDate) return false;
+      if (auditEndDate && r.fecha > auditEndDate) return false;
+      if (!auditStartDate && !auditEndDate && selectedMonth !== 'all') {
+        return r.fecha.startsWith(selectedMonth);
+      }
+      return true;
+    });
+  }, [records, auditStartDate, auditEndDate, selectedMonth]);
 
   // Derived Audit Metrics
   const auditMetrics = useMemo(() => {
@@ -197,7 +212,7 @@ export default function GinaView({ onChangeUser }) {
     // Map for formula breakdown: e.g. "33 días x 4h = 132h"
     const breakdownMap = {};
 
-    filteredRecords.forEach(r => {
+    auditFilteredRecords.forEach(r => {
       const h = Number(r.horas) || 0;
       totalHoras += h;
 
@@ -226,10 +241,10 @@ export default function GinaView({ onChangeUser }) {
       diasTrabajados,
       festivosCount,
       vacacionesCount,
-      totalRegistros: filteredRecords.length,
+      totalRegistros: auditFilteredRecords.length,
       breakdownList: Object.values(breakdownMap)
     };
-  }, [filteredRecords]);
+  }, [auditFilteredRecords]);
 
   // Month options for filter
   const monthOptions = useMemo(() => {
@@ -557,13 +572,13 @@ export default function GinaView({ onChangeUser }) {
             <div className="flex justify-center py-10">
               <div className="w-8 h-8 border-4 border-sky-200 border-t-sky-600 rounded-full animate-spin"></div>
             </div>
-          ) : filteredRecords.length === 0 ? (
+          ) : historyFilteredRecords.length === 0 ? (
             <div className="text-center py-10 text-gray-500 bg-white rounded-2xl border border-gray-100">
               No hay registros ingresados para este período.
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredRecords.map(item => (
+              {historyFilteredRecords.map(item => (
                 <div
                   key={item.id}
                   className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-2"
@@ -613,22 +628,67 @@ export default function GinaView({ onChangeUser }) {
         <div className="space-y-5 animate-in fade-in">
           {/* Audit Metrics Header */}
           <div className="bg-white p-5 rounded-3xl shadow-sm border border-sky-100 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-sky-600" />
-                Resumen de Auditoría
-              </h3>
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-between items-center">
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-sky-600" />
+                  Resumen de Auditoría
+                </h3>
 
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="p-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold outline-none"
-              >
-                <option value="all">Ver Todo</option>
-                {monthOptions.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
+                {(auditStartDate || auditEndDate) && (
+                  <button
+                    onClick={() => { setAuditStartDate(''); setAuditEndDate(''); }}
+                    className="text-xs font-bold text-sky-600 hover:text-sky-800 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-100 transition-colors"
+                  >
+                    Limpiar rango
+                  </button>
+                )}
+              </div>
+
+              {/* Rango de Fechas (Desde - Hasta) */}
+              <div className="bg-sky-50/60 p-3 rounded-2xl border border-sky-100 space-y-2">
+                <span className="text-xs font-bold text-sky-900 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-sky-600" />
+                  Filtrar por Rango de Fechas
+                </span>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] font-semibold text-gray-500 block mb-0.5">Desde</span>
+                    <input
+                      type="date"
+                      value={auditStartDate}
+                      onChange={(e) => setAuditStartDate(e.target.value)}
+                      className="w-full p-2 bg-white border border-sky-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold text-gray-500 block mb-0.5">Hasta</span>
+                    <input
+                      type="date"
+                      value={auditEndDate}
+                      onChange={(e) => setAuditEndDate(e.target.value)}
+                      className="w-full p-2 bg-white border border-sky-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-sky-500"
+                    />
+                  </div>
+                </div>
+
+                {!auditStartDate && !auditEndDate && (
+                  <div className="pt-1 flex items-center justify-between text-xs">
+                    <span className="text-gray-500 text-[11px]">O por Mes:</span>
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="p-1 bg-white border border-gray-200 rounded-lg text-xs font-semibold outline-none"
+                    >
+                      <option value="all">Todo el Tiempo</option>
+                      {monthOptions.map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Stat Grid */}

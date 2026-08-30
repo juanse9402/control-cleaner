@@ -14,10 +14,6 @@ export default function History() {
 
   const [fetchError, setFetchError] = useState(null);
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
-
   const fetchHistory = async () => {
     setIsLoading(true);
     try {
@@ -49,6 +45,10 @@ export default function History() {
     }
     setIsLoading(false);
   };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   const handleDelete = async (id) => {
     if (window.confirm('¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.')) {

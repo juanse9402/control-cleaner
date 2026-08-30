@@ -1,4 +1,3 @@
-import React from 'react';
 import { User, Cloud, Star, CheckCircle2 } from 'lucide-react';
 
 export default function UserSelector({ onSelectUser }) {

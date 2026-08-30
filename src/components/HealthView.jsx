@@ -54,6 +54,12 @@ function Toast({ message, onClose }) {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
+function Trend({ cur, prev }) {
+  if (cur > prev) return <span className="flex items-center text-xs text-red-500 font-medium"><TrendingUp className="w-3 h-3 mr-1" /> Sube (+{cur - prev})</span>;
+  if (cur < prev) return <span className="flex items-center text-xs text-green-600 font-medium"><TrendingDown className="w-3 h-3 mr-1" /> Baja ({prev - cur})</span>;
+  return <span className="text-xs text-gray-400 font-medium">Igual</span>;
+}
+
 export default function HealthView() {
   const [loading, setLoading]       = useState(false);
   const [logs, setLogs]             = useState([]);
@@ -180,12 +186,6 @@ export default function HealthView() {
 
   const formatDate = (iso) =>
     new Date(iso).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-
-  const Trend = ({ cur, prev }) => {
-    if (cur > prev) return <span className="flex items-center text-xs text-red-500 font-medium"><TrendingUp className="w-3 h-3 mr-1" /> Sube (+{cur - prev})</span>;
-    if (cur < prev) return <span className="flex items-center text-xs text-green-600 font-medium"><TrendingDown className="w-3 h-3 mr-1" /> Baja ({prev - cur})</span>;
-    return <span className="text-xs text-gray-400 font-medium">Igual</span>;
-  };
 
   // ─── Chart data ────────────────────────────────────────────────────────────
 

@@ -14,6 +14,28 @@ export default function LogWork() {
   const [todayServices, setTodayServices] = useState([]);
   const [fetchError, setFetchError] = useState(null);
 
+  const fetchTodayServices = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from('servicios')
+      .select(`
+        id,
+        horas,
+        notas,
+        total_pago,
+        cliente_id,
+        clientes (
+          nombre,
+          tarifa_hora
+        )
+      `)
+      .eq('fecha', today)
+      .order('id', { ascending: false });
+      
+    if (data) setTodayServices(data);
+    if (error) console.error('Error fetching today services:', error);
+  };
+
   useEffect(() => {
     const fetchClients = async () => {
       try {
@@ -38,28 +60,6 @@ export default function LogWork() {
     fetchClients();
     fetchTodayServices();
   }, []);
-
-  const fetchTodayServices = async () => {
-    const today = new Date().toISOString().split('T')[0];
-    const { data, error } = await supabase
-      .from('servicios')
-      .select(`
-        id,
-        horas,
-        notas,
-        total_pago,
-        cliente_id,
-        clientes (
-          nombre,
-          tarifa_hora
-        )
-      `)
-      .eq('fecha', today)
-      .order('id', { ascending: false });
-      
-    if (data) setTodayServices(data);
-    if (error) console.error('Error fetching today services:', error);
-  };
 
   const selectedClientData = clients.find(c => c.id === selectedClient);
   const calculatedTotal = selectedClientData && hours 
