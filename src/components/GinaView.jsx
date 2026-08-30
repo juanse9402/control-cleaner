@@ -456,23 +456,16 @@ export default function GinaView({ onChangeUser }) {
                 <button
                   type="button"
                   onClick={() => { setHoursInt(4); setMinsInt(0); }}
-                  className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-sky-100 text-xs font-bold text-gray-700 hover:text-sky-800 transition-all border border-gray-200"
+                  className="px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-xs font-bold text-sky-800 transition-all border border-sky-200 shadow-2xs"
                 >
                   4 Horas
                 </button>
                 <button
                   type="button"
                   onClick={() => { setHoursInt(3); setMinsInt(15); }}
-                  className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-sky-100 text-xs font-bold text-gray-700 hover:text-sky-800 transition-all border border-gray-200"
+                  className="px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-xs font-bold text-sky-800 transition-all border border-sky-200 shadow-2xs"
                 >
                   3h 15min
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setHoursInt(8); setMinsInt(0); }}
-                  className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-sky-100 text-xs font-bold text-gray-700 hover:text-sky-800 transition-all border border-gray-200"
-                >
-                  8 Horas
                 </button>
               </div>
 
