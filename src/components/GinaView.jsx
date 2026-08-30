@@ -467,20 +467,34 @@ export default function GinaView({ onChangeUser }) {
               </label>
 
               {/* Preset Buttons */}
-              <div className="flex gap-2 mb-3">
+              <div className="flex flex-wrap gap-2 mb-3">
                 <button
                   type="button"
                   onClick={() => { setHoursInt(4); setMinsInt(0); }}
-                  className="px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-xs font-bold text-sky-800 transition-all border border-sky-200 shadow-2xs"
+                  className="px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-xs font-bold text-sky-800 transition-all border border-sky-200 shadow-2xs"
                 >
                   4 Horas
                 </button>
                 <button
                   type="button"
                   onClick={() => { setHoursInt(3); setMinsInt(15); }}
-                  className="px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-xs font-bold text-sky-800 transition-all border border-sky-200 shadow-2xs"
+                  className="px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-xs font-bold text-sky-800 transition-all border border-sky-200 shadow-2xs"
                 >
                   3h 15min
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setHoursInt(0); setMinsInt(10); }}
+                  className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-xs font-bold text-amber-800 transition-all border border-amber-200 shadow-2xs"
+                >
+                  10 min
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setHoursInt(0); setMinsInt(5); }}
+                  className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-xs font-bold text-amber-800 transition-all border border-amber-200 shadow-2xs"
+                >
+                  5 min
                 </button>
               </div>
 
@@ -498,16 +512,15 @@ export default function GinaView({ onChangeUser }) {
                   </select>
                 </div>
                 <div>
-                  <span className="text-[11px] text-gray-500 block mb-1">Minutos</span>
+                  <span className="text-[11px] text-gray-500 block mb-1">Minutos (5, 10, 15...)</span>
                   <select
                     value={minsInt}
                     onChange={(e) => setMinsInt(Number(e.target.value))}
                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none text-sm font-semibold"
                   >
-                    <option value={0}>00 min</option>
-                    <option value={15}>15 min (0.25h)</option>
-                    <option value={30}>30 min (0.50h)</option>
-                    <option value={45}>45 min (0.75h)</option>
+                    {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
+                      <option key={m} value={m}>{m < 10 ? `0${m}` : m} min ({ (m/60).toFixed(2) }h)</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -818,10 +831,9 @@ export default function GinaView({ onChangeUser }) {
                   onChange={(e) => setEditMinsInt(Number(e.target.value))}
                   className="p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold"
                 >
-                  <option value={0}>00 min</option>
-                  <option value={15}>15 min</option>
-                  <option value={30}>30 min</option>
-                  <option value={45}>45 min</option>
+                  {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
+                    <option key={m} value={m}>{m < 10 ? `0${m}` : m} min</option>
+                  ))}
                 </select>
               </div>
             </div>
