@@ -130,10 +130,20 @@ export default function LogWork() {
 
       {fetchError && (
         <div className="mb-4 bg-red-50 text-red-800 px-4 py-3 rounded-xl text-sm border border-red-200 animate-in fade-in">
-          <strong className="block mb-1">Error de conexión con Supabase:</strong>
-          {fetchError}
-          <p className="mt-2 text-xs opacity-80">
-            * Revisa que las políticas RLS (Row Level Security) en Supabase estén desactivadas o que permitan "Select".
+          <strong className="block mb-1 font-semibold">Error de conexión con Supabase:</strong>
+          <span className="font-mono text-xs block mb-1">{fetchError}</span>
+          <p className="mt-2 text-xs opacity-90 leading-relaxed">
+            {fetchError.includes('Failed to fetch') ? (
+              <>
+                ⚠️ <strong>El proyecto de Supabase está pausado o inaccesible.</strong>
+                <br />
+                En el plan gratuito de Supabase, los proyectos se pausan tras 7 días de inactividad.
+                <br />
+                <strong>Solución:</strong> Entra en <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline font-semibold">supabase.com/dashboard</a>, selecciona tu proyecto y haz clic en <strong>"Restore project"</strong> (Reactivar).
+              </>
+            ) : (
+              '* Revisa que las políticas RLS (Row Level Security) en Supabase estén desactivadas o que permitan "Select".'
+            )}
           </p>
         </div>
       )}

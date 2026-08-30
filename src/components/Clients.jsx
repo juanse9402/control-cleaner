@@ -12,19 +12,28 @@ export default function Clients() {
   const [direccion, setDireccion] = useState('');
   const [tarifaHora, setTarifaHora] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
     fetchClients();
   }, []);
 
   const fetchClients = async () => {
-    const { data, error } = await supabase
-      .from('clientes')
-      .select('*')
-      .order('nombre');
-    
-    if (data) setClients(data);
-    if (error) console.error('Error fetching clients:', error);
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('nombre');
+      
+      if (error) {
+        setFetchError(error.message);
+      } else if (data) {
+        setClients(data);
+        setFetchError(null);
+      }
+    } catch (err) {
+      setFetchError(err.message);
+    }
   };
 
   const openModal = (client = null) => {
@@ -105,6 +114,24 @@ export default function Clients() {
           <UserPlus className="w-5 h-5" />
         </button>
       </div>
+
+      {fetchError && (
+        <div className="mb-4 bg-red-50 text-red-800 px-4 py-3 rounded-xl text-sm border border-red-200">
+          <strong className="block mb-1 font-semibold">Error de conexión con Supabase:</strong>
+          <span className="font-mono text-xs block mb-1">{fetchError}</span>
+          <p className="mt-2 text-xs opacity-90 leading-relaxed">
+            {fetchError.includes('Failed to fetch') ? (
+              <>
+                ⚠️ <strong>El proyecto de Supabase está pausado o inaccesible.</strong>
+                <br />
+                Ve a <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline font-semibold">supabase.com/dashboard</a> y haz clic en <strong>"Restore project"</strong>.
+              </>
+            ) : (
+              '* Revisa la configuración de Supabase y políticas RLS.'
+            )}
+          </p>
+        </div>
+      )}
 
       <div className="space-y-3">
         {clients.length === 0 ? (

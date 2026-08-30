@@ -12,31 +12,41 @@ export default function History() {
   const [editHours, setEditHours] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const [fetchError, setFetchError] = useState(null);
+
   useEffect(() => {
     fetchHistory();
   }, []);
 
   const fetchHistory = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from('servicios')
-      .select(`
-        id,
-        fecha,
-        horas,
-        notas,
-        total_pago,
-        cliente_id,
-        clientes (
-          nombre,
-          tarifa_hora
-        )
-      `)
-      .order('fecha', { ascending: false })
-      .order('id', { ascending: false });
-    
-    if (data) setHistory(data);
-    if (error) console.error('Error fetching history:', error);
+    try {
+      const { data, error } = await supabase
+        .from('servicios')
+        .select(`
+          id,
+          fecha,
+          horas,
+          notas,
+          total_pago,
+          cliente_id,
+          clientes (
+            nombre,
+            tarifa_hora
+          )
+        `)
+        .order('fecha', { ascending: false })
+        .order('id', { ascending: false });
+      
+      if (error) {
+        setFetchError(error.message);
+      } else if (data) {
+        setHistory(data);
+        setFetchError(null);
+      }
+    } catch (err) {
+      setFetchError(err.message);
+    }
     setIsLoading(false);
   };
 
@@ -102,6 +112,24 @@ export default function History() {
         <HistoryIcon className="w-5 h-5 text-brand-600" />
         Historial de Servicios
       </h2>
+
+      {fetchError && (
+        <div className="mb-4 bg-red-50 text-red-800 px-4 py-3 rounded-xl text-sm border border-red-200">
+          <strong className="block mb-1 font-semibold">Error de conexión con Supabase:</strong>
+          <span className="font-mono text-xs block mb-1">{fetchError}</span>
+          <p className="mt-2 text-xs opacity-90 leading-relaxed">
+            {fetchError.includes('Failed to fetch') ? (
+              <>
+                ⚠️ <strong>El proyecto de Supabase está pausado o inaccesible.</strong>
+                <br />
+                Ve a <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline font-semibold">supabase.com/dashboard</a> y haz clic en <strong>"Restore project"</strong>.
+              </>
+            ) : (
+              '* Revisa la configuración de Supabase y políticas RLS.'
+            )}
+          </p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-10">

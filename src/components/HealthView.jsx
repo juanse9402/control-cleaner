@@ -62,6 +62,7 @@ export default function HealthView() {
   const [allCycles, setAllCycles]   = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(getNowMonthStr);
   const [toast, setToast]           = useState(null); // { message: string }
+  const [fetchError, setFetchError] = useState(null);
 
   const showToast = useCallback((message) => setToast({ message }), []);
   const hideToast = useCallback(() => setToast(null), []);
@@ -75,6 +76,12 @@ export default function HealthView() {
         supabase.from('migraña_registros').select('*'),
         supabase.from('ciclo_menstrual').select('*'),
       ]);
+
+      if (logsRes.error || trendRes.error || recordsRes.error || cyclesRes.error) {
+        setFetchError(logsRes.error?.message || trendRes.error?.message || recordsRes.error?.message || cyclesRes.error?.message);
+      } else {
+        setFetchError(null);
+      }
 
       setLogs(logsRes.data || []);
       setAllRecords(recordsRes.data || []);
@@ -99,6 +106,7 @@ export default function HealthView() {
       setTrends({ currentMonth: current, lastMonth: previous });
     } catch (err) {
       console.error('HealthView fetchData error:', err);
+      setFetchError(err.message);
     }
   }, []);
 
@@ -278,6 +286,24 @@ export default function HealthView() {
 
       {/* Toast de éxito */}
       {toast && <Toast message={toast.message} onClose={hideToast} />}
+
+      {fetchError && (
+        <div className="bg-red-50 text-red-800 px-4 py-3 rounded-xl text-sm border border-red-200">
+          <strong className="block mb-1 font-semibold">Error de conexión con Supabase:</strong>
+          <span className="font-mono text-xs block mb-1">{fetchError}</span>
+          <p className="mt-2 text-xs opacity-90 leading-relaxed">
+            {fetchError.includes('Failed to fetch') ? (
+              <>
+                ⚠️ <strong>El proyecto de Supabase está pausado o inaccesible.</strong>
+                <br />
+                Ve a <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline font-semibold">supabase.com/dashboard</a> y haz clic en <strong>"Restore project"</strong>.
+              </>
+            ) : (
+              '* Revisa la configuración de Supabase y políticas RLS.'
+            )}
+          </p>
+        </div>
+      )}
 
       {/* Tratamiento Diario */}
       <div className="bg-purple-100/60 rounded-xl p-4 border border-purple-200 flex items-center gap-4 shadow-sm">

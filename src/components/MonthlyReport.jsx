@@ -7,6 +7,7 @@ export default function MonthlyReport() {
   const [rawServices, setRawServices] = useState([]);
   const [payments, setPayments] = useState({}); // { cliente_id: true/false }
   const [paymentLoading, setPaymentLoading] = useState(null); // cliente_id being toggled
+  const [fetchError, setFetchError] = useState(null);
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const d = new Date();
@@ -23,38 +24,45 @@ export default function MonthlyReport() {
       const firstDay = new Date(year, month - 1, 1).toISOString().split('T')[0];
       const lastDay  = new Date(year, month, 0).toISOString().split('T')[0];
 
-      const [servicesRes, paymentsRes] = await Promise.all([
-        supabase
-          .from('servicios')
-          .select(`id, fecha, horas, total_pago, cliente_id, clientes (nombre, tarifa_hora)`)
-          .gte('fecha', firstDay)
-          .lte('fecha', lastDay)
-          .order('fecha', { ascending: true }),
-        supabase
-          .from('pagos_mensuales')
-          .select('*')
-          .eq('mes_año', selectedMonth),
-      ]);
+      try {
+        const [servicesRes, paymentsRes] = await Promise.all([
+          supabase
+            .from('servicios')
+            .select(`id, fecha, horas, total_pago, cliente_id, clientes (nombre, tarifa_hora)`)
+            .gte('fecha', firstDay)
+            .lte('fecha', lastDay)
+            .order('fecha', { ascending: true }),
+          supabase
+            .from('pagos_mensuales')
+            .select('*')
+            .eq('mes_año', selectedMonth),
+        ]);
 
-      if (!servicesRes.error && servicesRes.data) {
-        const processed = servicesRes.data.map(curr => {
-          let pago = Number(curr.total_pago);
-          if (!curr.total_pago || isNaN(pago)) {
-            const tarifa = Number(curr.clientes?.tarifa_hora) || 0;
-            pago = (Number(curr.horas) || 0) * tarifa;
+        if (servicesRes.error) {
+          setFetchError(servicesRes.error.message);
+        } else if (servicesRes.data) {
+          setFetchError(null);
+          const processed = servicesRes.data.map(curr => {
+            let pago = Number(curr.total_pago);
+            if (!curr.total_pago || isNaN(pago)) {
+              const tarifa = Number(curr.clientes?.tarifa_hora) || 0;
+              pago = (Number(curr.horas) || 0) * tarifa;
+            }
+            return { ...curr, total_pago: pago };
+          });
+          setRawServices(processed);
+          if (selectedClient !== 'all' && !processed.some(s => s.cliente_id === selectedClient)) {
+            setSelectedClient('all');
           }
-          return { ...curr, total_pago: pago };
-        });
-        setRawServices(processed);
-        if (selectedClient !== 'all' && !processed.some(s => s.cliente_id === selectedClient)) {
-          setSelectedClient('all');
         }
-      }
 
-      if (!paymentsRes.error && paymentsRes.data) {
-        const map = {};
-        paymentsRes.data.forEach(p => { map[p.cliente_id] = p.pagado; });
-        setPayments(map);
+        if (!paymentsRes.error && paymentsRes.data) {
+          const map = {};
+          paymentsRes.data.forEach(p => { map[p.cliente_id] = p.pagado; });
+          setPayments(map);
+        }
+      } catch (err) {
+        setFetchError(err.message);
       }
 
       setIsLoading(false);
@@ -164,6 +172,24 @@ export default function MonthlyReport() {
       <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
         <FileText className="w-5 h-5 text-brand-600" /> Reporte de Cobros
       </h2>
+
+      {fetchError && (
+        <div className="mb-4 bg-red-50 text-red-800 px-4 py-3 rounded-xl text-sm border border-red-200">
+          <strong className="block mb-1 font-semibold">Error de conexión con Supabase:</strong>
+          <span className="font-mono text-xs block mb-1">{fetchError}</span>
+          <p className="mt-2 text-xs opacity-90 leading-relaxed">
+            {fetchError.includes('Failed to fetch') ? (
+              <>
+                ⚠️ <strong>El proyecto de Supabase está pausado o inaccesible.</strong>
+                <br />
+                Ve a <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline font-semibold">supabase.com/dashboard</a> y haz clic en <strong>"Restore project"</strong>.
+              </>
+            ) : (
+              '* Revisa la configuración de Supabase y políticas RLS.'
+            )}
+          </p>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 space-y-4">
