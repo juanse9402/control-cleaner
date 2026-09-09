@@ -83,7 +83,7 @@ export default function GinaView({ onChangeUser }) {
     setIsLoading(false);
   };
 
-  const calculatedHours = Number(hoursInt) + (Number(minsInt) / 60);
+  const calculatedHours = Number(hoursInt || 0) + (Number(minsInt || 0) / 60);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -149,7 +149,7 @@ export default function GinaView({ onChangeUser }) {
 
   const handleSaveEdit = async () => {
     if (!editingRecord) return;
-    const totalEditHours = Number(editHoursInt) + (Number(editMinsInt) / 60);
+    const totalEditHours = Number(editHoursInt || 0) + (Number(editMinsInt || 0) / 60);
     if (totalEditHours <= 0) {
       alert('Por favor especifica una cantidad de horas mayor a 0.');
       return;
@@ -500,28 +500,30 @@ export default function GinaView({ onChangeUser }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <span className="text-[11px] text-gray-500 block mb-1">Horas</span>
-                  <select
+                  <label className="text-[11px] text-gray-500 font-medium block mb-1">Horas</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="24"
                     value={hoursInt}
-                    onChange={(e) => setHoursInt(Number(e.target.value))}
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none text-sm font-semibold"
-                  >
-                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => (
-                      <option key={h} value={h}>{h} h</option>
-                    ))}
-                  </select>
+                    onChange={(e) => setHoursInt(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    onBlur={() => { if (hoursInt === '' || hoursInt < 0) setHoursInt(0); }}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none text-sm font-semibold text-center"
+                    placeholder="0"
+                  />
                 </div>
                 <div>
-                  <span className="text-[11px] text-gray-500 block mb-1">Minutos (0 - 59 min)</span>
-                  <select
+                  <label className="text-[11px] text-gray-500 font-medium block mb-1">Minutos (Escribe 0 - 59)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
                     value={minsInt}
-                    onChange={(e) => setMinsInt(Number(e.target.value))}
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none text-sm font-semibold"
-                  >
-                    {Array.from({ length: 60 }, (_, m) => m).map(m => (
-                      <option key={m} value={m}>{m < 10 ? `0${m}` : m} min ({ (m/60).toFixed(2) }h)</option>
-                    ))}
-                  </select>
+                    onChange={(e) => setMinsInt(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    onBlur={() => { if (minsInt === '' || minsInt < 0) setMinsInt(0); }}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none text-sm font-semibold text-center"
+                    placeholder="0"
+                  />
                 </div>
               </div>
 
@@ -817,24 +819,32 @@ export default function GinaView({ onChangeUser }) {
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">Horas y Minutos</label>
               <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={editHoursInt}
-                  onChange={(e) => setEditHoursInt(Number(e.target.value))}
-                  className="p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold"
-                >
-                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => (
-                    <option key={h} value={h}>{h} hrs</option>
-                  ))}
-                </select>
-                <select
-                  value={editMinsInt}
-                  onChange={(e) => setEditMinsInt(Number(e.target.value))}
-                  className="p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold"
-                >
-                  {Array.from({ length: 60 }, (_, m) => m).map(m => (
-                    <option key={m} value={m}>{m < 10 ? `0${m}` : m} min</option>
-                  ))}
-                </select>
+                <div>
+                  <span className="text-[10px] text-gray-500 block mb-0.5">Horas</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="24"
+                    value={editHoursInt}
+                    onChange={(e) => setEditHoursInt(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    onBlur={() => { if (editHoursInt === '' || editHoursInt < 0) setEditHoursInt(0); }}
+                    className="w-full p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-center focus:ring-2 focus:ring-sky-500 outline-none"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-500 block mb-0.5">Minutos</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    value={editMinsInt}
+                    onChange={(e) => setEditMinsInt(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    onBlur={() => { if (editMinsInt === '' || editMinsInt < 0) setEditMinsInt(0); }}
+                    className="w-full p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-center focus:ring-2 focus:ring-sky-500 outline-none"
+                    placeholder="0"
+                  />
+                </div>
               </div>
             </div>
 
