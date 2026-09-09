@@ -512,13 +512,13 @@ export default function GinaView({ onChangeUser }) {
                   </select>
                 </div>
                 <div>
-                  <span className="text-[11px] text-gray-500 block mb-1">Minutos (5, 10, 15...)</span>
+                  <span className="text-[11px] text-gray-500 block mb-1">Minutos (0 - 59 min)</span>
                   <select
                     value={minsInt}
                     onChange={(e) => setMinsInt(Number(e.target.value))}
                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none text-sm font-semibold"
                   >
-                    {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
+                    {Array.from({ length: 60 }, (_, m) => m).map(m => (
                       <option key={m} value={m}>{m < 10 ? `0${m}` : m} min ({ (m/60).toFixed(2) }h)</option>
                     ))}
                   </select>
@@ -831,7 +831,7 @@ export default function GinaView({ onChangeUser }) {
                   onChange={(e) => setEditMinsInt(Number(e.target.value))}
                   className="p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold"
                 >
-                  {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
+                  {Array.from({ length: 60 }, (_, m) => m).map(m => (
                     <option key={m} value={m}>{m < 10 ? `0${m}` : m} min</option>
                   ))}
                 </select>
