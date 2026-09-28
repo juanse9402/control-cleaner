@@ -18,7 +18,8 @@ import {
   CheckCheck,
   RefreshCw,
   FolderOpen,
-  ArrowLeft
+  ArrowLeft,
+  ArrowUpDown
 } from 'lucide-react';
 
 
@@ -105,6 +106,7 @@ export default function GinaWhatsAppView({ onBack }) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedSender, setSelectedSender] = useState('all');
+  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' (lo más reciente primero) | 'asc' (lo más antiguo primero)
 
   // UI State
   const [copiedId, setCopiedId] = useState(null);
@@ -328,6 +330,14 @@ export default function GinaWhatsAppView({ onBack }) {
       return true;
     });
   }, [messages, searchQuery, selectedSender, startDate, endDate]);
+
+  // Sort displayed messages based on sortOrder (default: 'desc' = newest first at top)
+  const displayedMessages = useMemo(() => {
+    if (sortOrder === 'desc') {
+      return [...filteredMessages].reverse();
+    }
+    return filteredMessages;
+  }, [filteredMessages, sortOrder]);
 
   const copyToClipboard = (text, id) => {
     navigator.clipboard.writeText(text);
@@ -588,6 +598,16 @@ export default function GinaWhatsAppView({ onBack }) {
                   </button>
                 )}
               </div>
+
+              {/* Sort Order Toggle Button */}
+              <button
+                onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                className="p-1.5 bg-white border border-gray-300 rounded-xl text-[11px] font-semibold outline-none flex items-center gap-1 hover:bg-emerald-50 hover:border-emerald-300 text-gray-700 transition-colors shadow-2xs"
+                title="Cambiar orden de mensajes"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{sortOrder === 'desc' ? 'Más recientes primero' : 'Más antiguos primero'}</span>
+              </button>
             </div>
           </div>
 
@@ -600,12 +620,12 @@ export default function GinaWhatsAppView({ onBack }) {
               backgroundSize: '16px 16px'
             }}
           >
-            {filteredMessages.length === 0 ? (
+            {displayedMessages.length === 0 ? (
               <div className="bg-white/90 p-4 rounded-2xl text-center text-xs text-gray-500 max-w-xs mx-auto my-10 border border-gray-200 shadow-xs">
                 No se encontraron mensajes con los filtros seleccionados.
               </div>
             ) : (
-              filteredMessages.map((msg, idx) => {
+              displayedMessages.map((msg, idx) => {
                 const isPrimary = msg.sender === primarySender;
                 const isSystem = msg.isSystem;
 
