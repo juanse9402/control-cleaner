@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import {
   Clock,
@@ -17,8 +17,10 @@ import {
   Save,
   X,
   AlertCircle,
-  FileCode
+  FileCode,
+  MessageSquare
 } from 'lucide-react';
+import GinaWhatsAppView from './GinaWhatsAppView';
 
 // Helper to format float hours (e.g. 3.25 -> "3h 15min", 4 -> "4h")
 function formatHours(val) {
@@ -31,7 +33,25 @@ function formatHours(val) {
 }
 
 export default function GinaView({ onChangeUser }) {
-  const [activeTab, setActiveTab] = useState('log'); // 'log' | 'history' | 'audit'
+  const [activeTab, setActiveTab] = useState('log'); // 'log' | 'history' | 'audit' | 'whatsapp'
+
+  // Secret 3-Tap Trigger for Hidden WhatsApp Chat
+  const secretTapCount = useRef(0);
+  const secretTapTimer = useRef(null);
+
+  const handleSecretTap = () => {
+    secretTapCount.current += 1;
+    if (secretTapCount.current >= 3) {
+      secretTapCount.current = 0;
+      if (secretTapTimer.current) clearTimeout(secretTapTimer.current);
+      setActiveTab('whatsapp');
+    } else {
+      if (secretTapTimer.current) clearTimeout(secretTapTimer.current);
+      secretTapTimer.current = setTimeout(() => {
+        secretTapCount.current = 0;
+      }, 1500);
+    }
+  };
 
   // Form State
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -528,7 +548,11 @@ export default function GinaView({ onChangeUser }) {
               </div>
 
               <div className="mt-2 text-right">
-                <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-100">
+                <span
+                  onClick={handleSecretTap}
+                  className="text-xs font-bold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-100 select-none cursor-pointer active:scale-95 transition-transform inline-block"
+                  title="Total horas"
+                >
                   Total: {formatHours(calculatedHours)} ({calculatedHours.toFixed(2)} hrs)
                 </span>
               </div>
@@ -775,6 +799,13 @@ export default function GinaView({ onChangeUser }) {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* TAB 4: HIDDEN WHATSAPP CHAT VIEWER */}
+      {activeTab === 'whatsapp' && (
+        <div className="animate-in fade-in">
+          <GinaWhatsAppView onBack={() => setActiveTab('log')} />
         </div>
       )}
 
