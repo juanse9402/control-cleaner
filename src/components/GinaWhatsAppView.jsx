@@ -119,24 +119,48 @@ export default function GinaWhatsAppView({ onBack }) {
     fetchSavedChats();
   }, []);
 
+  const loadDefaultChatFile = async () => {
+    try {
+      const res = await fetch('/default_chat.txt');
+      if (res.ok) {
+        const text = await res.text();
+        const parsed = parseWhatsAppTxt(text);
+        if (parsed.length > 0) {
+          setSelectedChat({
+            id: 'default-chat-gina',
+            title: 'WhatsApp Chat - Gina Amatxu',
+            total_messages: parsed.length
+          });
+          setMessages(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn('No se pudo cargar /default_chat.txt:', e);
+    }
+  };
+
   const fetchSavedChats = async () => {
     setIsLoading(true);
+    let loadedFromSupabase = false;
     try {
       const { data, error } = await supabase
         .from('gina_whatsapp_chats')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.warn('Tabla gina_whatsapp_chats no encontrada o error:', error);
-      } else if (data) {
+      if (!error && data && data.length > 0) {
         setChatsList(data);
-        if (data.length > 0 && !selectedChat && !rawParsedData) {
-          loadChatMessages(data[0]);
+        if (!selectedChat && !rawParsedData) {
+          await loadChatMessages(data[0]);
         }
+        loadedFromSupabase = true;
       }
     } catch (err) {
-      console.error('Error cargando chats:', err);
+      console.error('Error cargando chats desde Supabase:', err);
+    }
+
+    if (!loadedFromSupabase && (!messages || messages.length === 0)) {
+      await loadDefaultChatFile();
     }
     setIsLoading(false);
   };
