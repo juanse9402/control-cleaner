@@ -366,9 +366,8 @@ export default function GinaWhatsAppView({ onBack }) {
               <MessageSquare className="w-3.5 h-3.5 fill-emerald-300 text-emerald-300" />
               Copia de WhatsApp de Gina
             </span>
-            <h2 className="text-xl font-bold">Consulta de Chat de WhatsApp</h2>
-            <p className="text-xs text-emerald-100 mt-1">
-              Consulta conversaciones, fechas y datos de WhatsApp sin necesidad de tener el móvil encendido.
+            <p className="text-xs text-emerald-100 mt-1 italic leading-relaxed font-medium">
+              Como sé que no puedes tener nuestro chat, acá te dejo esto para que suspires como yo lo hago por cada vez que leo nuestras líneas, escucho nuestros audios o sueño viendo nuestras fotos. ❤️
             </p>
           </div>
           <div className="flex items-center gap-2">
