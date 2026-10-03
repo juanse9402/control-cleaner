@@ -6,12 +6,20 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const filePath = "C:\\Users\\Juan Sebastián G\\Downloads\\WhatsApp Chat - Gina Amatxu\\_chat.txt";
+const possiblePaths = [
+  "C:\\Users\\Juan Sebastián G\\Downloads\\WhatsApp Chat - Gina Amatxu (1)\\_chat.txt",
+  "public/default_chat.txt",
+  "C:\\Users\\Juan Sebastián G\\Downloads\\WhatsApp Chat - Gina Amatxu\\_chat.txt"
+];
 
-if (!fs.existsSync(filePath)) {
-  console.error("No se encontró el archivo:", filePath);
+const filePath = possiblePaths.find(p => fs.existsSync(p));
+
+if (!filePath) {
+  console.error("No se encontró ningún archivo de chat en las rutas esperadas.");
   process.exit(1);
 }
+
+console.log("Usando archivo:", filePath);
 
 const rawContent = fs.readFileSync(filePath, 'utf8');
 

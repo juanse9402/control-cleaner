@@ -27,7 +27,8 @@ import {
  * Parses raw WhatsApp .txt export content into structured message objects
  */
 function parseWhatsAppTxt(txtContent) {
-  const lines = txtContent.split(/\r?\n/);
+  const cleaned = txtContent.replace(/[\u200e\u200f\u202f\u200b\ufeff]/g, ' ');
+  const lines = cleaned.split(/\r?\n/);
   const messages = [];
   let currentMsg = null;
 
