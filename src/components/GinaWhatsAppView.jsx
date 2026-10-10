@@ -108,6 +108,7 @@ export default function GinaWhatsAppView({ onBack }) {
   const [endDate, setEndDate] = useState('');
   const [selectedSender, setSelectedSender] = useState('all');
   const [sortOrder, setSortOrder] = useState('desc'); // 'desc' (lo más reciente primero) | 'asc' (lo más antiguo primero)
+  const [visibleCount, setVisibleCount] = useState(150);
 
   // UI State
   const [copiedId, setCopiedId] = useState(null);
@@ -122,16 +123,21 @@ export default function GinaWhatsAppView({ onBack }) {
     fetchSavedChats();
   }, []);
 
+  useEffect(() => {
+    setVisibleCount(150);
+  }, [searchQuery, selectedSender, startDate, endDate, sortOrder, selectedChat]);
+
   const loadDefaultChatFile = async () => {
     try {
-      const res = await fetch('/default_chat.txt');
+      setIsLoading(true);
+      const res = await fetch('/default_chat.txt?t=' + Date.now(), { cache: 'no-store' });
       if (res.ok) {
         const text = await res.text();
         const parsed = parseWhatsAppTxt(text);
         if (parsed.length > 0) {
           setSelectedChat({
             id: 'default-chat-gina',
-            title: 'WhatsApp Chat - Gina Amatxu',
+            title: 'WhatsApp Chat - Gina Amatxu (2)',
             total_messages: parsed.length
           });
           setMessages(parsed);
@@ -139,6 +145,8 @@ export default function GinaWhatsAppView({ onBack }) {
       }
     } catch (e) {
       console.warn('No se pudo cargar /default_chat.txt:', e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -339,6 +347,10 @@ export default function GinaWhatsAppView({ onBack }) {
     }
     return filteredMessages;
   }, [filteredMessages, sortOrder]);
+
+  const visibleMessages = useMemo(() => {
+    return displayedMessages.slice(0, visibleCount);
+  }, [displayedMessages, visibleCount]);
 
   const copyToClipboard = (text, id) => {
     navigator.clipboard.writeText(text);
@@ -621,12 +633,18 @@ export default function GinaWhatsAppView({ onBack }) {
               backgroundSize: '16px 16px'
             }}
           >
-            {displayedMessages.length === 0 ? (
+            {isLoading ? (
+              <div className="bg-white/90 p-6 rounded-2xl text-center text-xs text-gray-600 max-w-xs mx-auto my-10 border border-gray-200 shadow-xs flex flex-col items-center gap-2">
+                <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin" />
+                <span>Cargando historial del chat...</span>
+              </div>
+            ) : displayedMessages.length === 0 ? (
               <div className="bg-white/90 p-4 rounded-2xl text-center text-xs text-gray-500 max-w-xs mx-auto my-10 border border-gray-200 shadow-xs">
                 No se encontraron mensajes con los filtros seleccionados.
               </div>
             ) : (
-              displayedMessages.map((msg, idx) => {
+              <>
+                {visibleMessages.map((msg, idx) => {
                 const isPrimary = msg.sender === primarySender;
                 const isSystem = msg.isSystem;
 
@@ -685,7 +703,21 @@ export default function GinaWhatsAppView({ onBack }) {
                     </div>
                   </div>
                 );
-              })
+              })}
+
+                {visibleCount < displayedMessages.length && (
+                  <div className="flex justify-center pt-3 pb-6">
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount(prev => prev + 250)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Cargar más mensajes (mostrando {visibleMessages.length} de {displayedMessages.length})</span>
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
