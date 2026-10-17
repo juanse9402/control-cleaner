@@ -17,8 +17,7 @@ import {
   Save,
   X,
   AlertCircle,
-  FileCode,
-  MessageSquare
+  FileCode
 } from 'lucide-react';
 import GinaWhatsAppView from './GinaWhatsAppView';
 
@@ -326,27 +325,13 @@ export default function GinaView({ onChangeUser }) {
             <h2 className="text-2xl font-bold">Control Horas Laborales</h2>
             <p className="text-xs text-sky-100 mt-1">Registra tu jornada diaria y audita tus horas de más ⭐</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab('whatsapp')}
-              className={`text-xs px-3 py-1.5 rounded-xl backdrop-blur-sm transition-all flex items-center gap-1.5 border font-semibold ${
-                activeTab === 'whatsapp'
-                  ? 'bg-emerald-500 text-white border-emerald-400 shadow-sm'
-                  : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
-              }`}
-              title="Abrir historial de WhatsApp"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>Chat</span>
-            </button>
-            <button
-              onClick={onChangeUser}
-              className="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-xl backdrop-blur-sm transition-all flex items-center gap-1 border border-white/20"
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              Cambiar
-            </button>
-          </div>
+          <button
+            onClick={onChangeUser}
+            className="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-xl backdrop-blur-sm transition-all flex items-center gap-1 border border-white/20"
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            Cambiar
+          </button>
         </div>
       </div>
 
@@ -403,15 +388,6 @@ export default function GinaView({ onChangeUser }) {
         >
           <BarChart3 className="w-4 h-4" />
           Auditoría
-        </button>
-        <button
-          onClick={() => setActiveTab('whatsapp')}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'whatsapp' ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-700 hover:bg-emerald-50'
-          }`}
-        >
-          <MessageSquare className="w-4 h-4" />
-          Chat
         </button>
       </div>
 
