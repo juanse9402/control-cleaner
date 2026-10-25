@@ -6,21 +6,12 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const possiblePaths = [
-  "C:\\Users\\Juan Sebastián G\\Downloads\\WhatsApp Chat - Gina Amatxu (2)\\_chat.txt",
-  "C:\\Users\\Juan Sebastián G\\Downloads\\WhatsApp Chat - Gina Amatxu (1)\\_chat.txt",
-  "public/default_chat.txt",
-  "C:\\Users\\Juan Sebastián G\\Downloads\\WhatsApp Chat - Gina Amatxu\\_chat.txt"
-];
+const filePath = "C:\\Users\\Juan Sebastián G\\Downloads\\WhatsApp Chat - Gina Amatxu\\_chat.txt";
 
-const filePath = possiblePaths.find(p => fs.existsSync(p));
-
-if (!filePath) {
-  console.error("No se encontró ningún archivo de chat en las rutas esperadas.");
+if (!fs.existsSync(filePath)) {
+  console.error("No se encontró el archivo:", filePath);
   process.exit(1);
 }
-
-console.log("Usando archivo:", filePath);
 
 const rawContent = fs.readFileSync(filePath, 'utf8');
 
@@ -93,8 +84,8 @@ async function run() {
     .eq('title', chatTitle);
 
   if (existing && existing.length > 0) {
-    console.log("Reemplazando versión previa en Supabase con ID:", existing[0].id);
-    await supabase.from('gina_whatsapp_chats').delete().eq('id', existing[0].id);
+    console.log("El chat ya existe en Supabase con ID:", existing[0].id);
+    return;
   }
 
   // Create chat header

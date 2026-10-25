@@ -48,7 +48,7 @@ export default function GinaView({ onChangeUser }) {
       if (secretTapTimer.current) clearTimeout(secretTapTimer.current);
       secretTapTimer.current = setTimeout(() => {
         secretTapCount.current = 0;
-      }, 1500);
+      }, 2500);
     }
   };
 
@@ -318,7 +318,11 @@ export default function GinaView({ onChangeUser }) {
         </div>
         <div className="flex justify-between items-start relative z-10">
           <div>
-            <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm flex items-center gap-1.5 w-max mb-2">
+            <span
+              onClick={handleSecretTap}
+              className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm flex items-center gap-1.5 w-max mb-2 cursor-pointer select-none active:scale-95 transition-all"
+              title="Perfil de Gina"
+            >
               <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
               Perfil de Gina
             </span>
